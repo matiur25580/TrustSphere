@@ -85,7 +85,7 @@ Passwords are hashed with bcrypt. Refresh tokens are opaque, stored as hashes, r
 
 The React client includes login and organization registration screens, in-memory access-token handling, refresh-cookie session restoration, a protected dashboard view, sign-out, organization switching, and a live tenant-context check. The authenticated dashboard includes a vendor directory, assessment workspace, and findings/remediation workspace with versioned baseline questionnaires, answer capture, evidence references, risk breakdowns, remediation ownership, due dates, and independent owner/admin validation. The access token is deliberately not persisted in localStorage; the browser uses the HttpOnly refresh cookie to restore sessions.
 
-**Important:** this is an evolving portfolio implementation, not a security certification. Automated API/security integration tests, audit-event tamper resistance, invitations, MFA, configurable template authoring, private object-storage integration, and production deployment hardening remain future work. Registration currently uses compensating cleanup for partial failures; it is not a multi-document MongoDB transaction. The reporting workspace reads persisted organization data. Date-range filters apply to newly created vendors, assessments and findings; compliance implementation and evidence lifecycle cards show current organization status.
+**Important:** this is an evolving portfolio implementation, not a security certification. Automated API/security integration tests still require CI confirmation; audit-event tamper resistance, invitations, MFA, configurable template authoring, private object-storage integration, and production deployment hardening remain future work. Registration currently uses compensating cleanup for partial failures; it is not a multi-document MongoDB transaction. The reporting workspace reads persisted organization data. Date-range filters apply to newly created vendors, assessments and findings; compliance implementation and evidence lifecycle cards show current organization status.
 
 ### Vendor Management API
 
@@ -156,6 +156,21 @@ All endpoints require a bearer access token and active tenant membership.
 - `GET /api/v1/compliance/evidence/:id/events` — upload, review and download activity history.
 
 Uploads are limited to 25 MB and PDF, PNG, JPEG or UTF-8 text content. The API checks file signatures, generates SHA-256, sanitizes display filenames and stores opaque UUID filenames under an organization-specific private directory. Set `EVIDENCE_STORAGE_DIR` to a persistent directory outside the web root. Local disk is not suitable for multi-instance or ephemeral deployments. Malware scanning, encrypted object storage, backup/retention automation and transactionally tamper-resistant audit storage remain production hardening tasks.
+
+### Incident Management & Security Operations
+
+All incident endpoints require an authenticated active tenant. Owner/admin/analyst can create and manage incidents with `security:write`; viewer can read with `security:read`.
+
+- `GET /api/v1/incidents/members` — active organization responders for assignment.
+- `GET /api/v1/incidents/summary` — tenant-scoped incident counts and severity distribution.
+- `GET /api/v1/incidents?status=&severity=&category=&q=&page=1&limit=20` — filtered, paginated incident queue.
+- `POST /api/v1/incidents` — report a security incident and optionally link an in-tenant vendor, finding and assignee.
+- `GET /api/v1/incidents/:id` — incident record and investigation timeline.
+- `PATCH /api/v1/incidents/:id` — update incident details, plans, lessons learned and assignee.
+- `POST /api/v1/incidents/:id/transition` — triage, investigate, contain, recover, resolve, close or reopen.
+- `POST /api/v1/incidents/:id/comments` — append an investigation note to the event timeline.
+
+The lifecycle enforces containment and recovery plans before those stages. Only owner/admin can close or reopen resolved incidents. Vendor, finding and assignee references are validated against the active organization. Event history is append-only through the API, but is not yet transactionally coupled or cryptographically tamper-evident. See [Incident module notes](server/src/modules/incidents/README.md) and the [incident API test plan](server/src/modules/incidents/incident.test-plan.md).
 
 ### Enterprise Reporting & Risk Intelligence
 
