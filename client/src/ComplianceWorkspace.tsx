@@ -7,6 +7,7 @@ type Control = {
   mappings: { framework: string; reference: string }[];
   implementation: { status: "not_started" | "in_progress" | "implemented" | "not_applicable"; owner: string; notes: string; evidence: unknown[] };
 };
+type EvidenceEvent = { _id: string; action: string; occurredAt: string; actorId: string };
 type Evidence = { _id: string; controlId: string; fileName: string; mimeType: string; sizeBytes: number; sha256: string; status: "pending_review" | "approved" | "rejected" | "expired"; expiresAt?: string | null; reviewComment?: string };
 type Summary = { total: number; not_started: number; in_progress: number; implemented: number; not_applicable: number; coveragePercent: number; mappedFrameworks: number };
 const labels = { not_started: "Not started", in_progress: "In progress", implemented: "Implemented", not_applicable: "Not applicable" };
@@ -25,6 +26,8 @@ export function ComplianceWorkspace({ accessToken, organizationId, canWrite, can
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [expiresAt, setExpiresAt] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [historyEvidenceId, setHistoryEvidenceId] = useState("");
+  const [evidenceEvents, setEvidenceEvents] = useState<EvidenceEvent[]>([]);
 
   async function load() {
     setLoading(true); setError("");
@@ -120,6 +123,16 @@ export function ComplianceWorkspace({ accessToken, organizationId, canWrite, can
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Evidence review failed."); }
   }
 
+  async function toggleEvidenceHistory(item: Evidence) {
+    if (historyEvidenceId === item._id) { setHistoryEvidenceId(""); setEvidenceEvents([]); return; }
+    try {
+      const response = await fetch(`/api/v1/compliance/evidence/${item._id}/events`, { headers: { Authorization: `Bearer ${accessToken}`, "x-organization-id": organizationId } });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error?.message || "Unable to load evidence history.");
+      setHistoryEvidenceId(item._id); setEvidenceEvents(payload.data ?? []);
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Unable to load evidence history."); }
+  }
+
   async function downloadEvidence(item: Evidence) {
     try {
       const response = await fetch(`/api/v1/compliance/evidence/${item._id}/download`, { headers: { Authorization: `Bearer ${accessToken}`, "x-organization-id": organizationId } });
@@ -167,7 +180,9 @@ export function ComplianceWorkspace({ accessToken, organizationId, canWrite, can
               <span className={`evidence-state ${item.status}`}>{item.status.replace("_", " ")}</span>
               {item.status === "approved" && <button type="button" className="subtle-button" onClick={() => void downloadEvidence(item)}>Download</button>}
               {canReview && item.status === "pending_review" && <><button type="button" className="subtle-button" onClick={() => void reviewEvidence(item, "approved")}>Approve</button><button type="button" className="subtle-button" onClick={() => void reviewEvidence(item, "rejected")}>Reject</button></>}
+              <button type="button" className="subtle-button" onClick={() => void toggleEvidenceHistory(item)}>{historyEvidenceId === item._id ? "Hide history" : "History"}</button>
               {item.reviewComment && <small className="evidence-review-comment">Reviewer: {item.reviewComment}</small>}
+              {historyEvidenceId === item._id && <div className="evidence-history">{evidenceEvents.map((event, index) => <small key={event._id || index}>{event.action.replace("_", " ")} · {new Date(event.occurredAt).toLocaleString()}</small>)}</div>}
             </article>)}
           </div>
         </div>
