@@ -28,9 +28,9 @@ Express API (/api/v1)
 
 ## Tenant isolation
 
-- Every tenant-owned record must carry an `organizationId`. Vendor documents include organization, creator, and updater references.
+- Every tenant-owned record must carry an `organizationId`. Vendor documents, assessments, and assessment events carry organization references.
 - Resolve the active organization from a verified membership, not from an arbitrary client-supplied ID alone.
-- Scope every read, update, and archive query by both resource ID and organization ID. Vendor list, summary, and search operations are also tenant-filtered.
+- Scope every read, update, and archive query by both resource ID and organization ID. Assessment detail, vendor linkage, list, summary, response, submit, review, and event-history queries are tenant-scoped.
 - Enforce membership and permission checks in backend middleware/services.
 - Add automated cross-tenant access tests before exposing tenant-owned endpoints.
 
@@ -58,7 +58,13 @@ Express API (/api/v1)
 
 ## Risk scoring principles
 
-Risk scores must be deterministic and explainable. The initial vendor-directory heuristic combines criticality (15/35/60/75), data sensitivity (0/5/12/18), and access level (0/5/12), capped at 100. Bands are low (<35), medium (35–59), high (60–79), and critical (80–100). This is a triage baseline, not a formal assessment; future assessment snapshots must preserve scoring-model version and contributing evidence. AI may summarize evidence or suggest mappings, but must not silently alter authoritative scores or approve vendors.
+Risk scores must be deterministic and explainable. The vendor directory has an inherent-risk triage heuristic. The separate assessment engine snapshots template version 1 and calculates a weighted 0–100 risk score (yes=0, partial=50, no=100; not-applicable excluded), retaining model version `vendor-security-risk-v1` and per-category breakdown. This questionnaire is decision support only, not a certification, audit opinion, or regulatory determination. AI may summarize evidence or suggest mappings, but must not silently alter authoritative scores or approve vendors.
+
+## Assessment and evidence handling
+
+Assessment question sets are copied into each assessment as version snapshots so future template revisions do not rewrite historical questionnaires. Assessment state transitions are draft/in-progress → submitted → approved/rejected. Only owners/admins can make the final review decision. Event history is append-only through API routes; database-level tamper resistance and atomic transaction guarantees are not implemented yet.
+
+Evidence records contain metadata and an opaque storage key only. Binary storage, malware scanning, signed URL issuance, and per-object authorization require a separately configured private object-storage integration.
 
 ## File handling
 
