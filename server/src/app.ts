@@ -8,6 +8,7 @@ import { healthRouter } from "./modules/health/health.routes.js";
 import { identityRouter } from "./modules/identity/identity.routes.js";
 import { tenantRouter } from "./modules/identity/tenant.routes.js";
 import { vendorRouter } from "./modules/vendors/vendor.routes.js";
+import { assessmentRouter } from "./modules/assessments/assessment.routes.js";
 
 export function createApp() {
   const app = express();
@@ -42,6 +43,7 @@ export function createApp() {
   app.use("/api/v1/auth", identityRouter);
   app.use("/api/v1/tenant", tenantRouter);
   app.use("/api/v1/vendors", vendorRouter);
+  app.use("/api/v1/assessments", assessmentRouter);
   app.use(notFoundHandler);
   app.use(errorHandler);
 
