@@ -40,7 +40,7 @@ async function buildReport(organizationId: string, range: ReportRange) {
   const activeFindingStatuses = ["open", "in_progress", "pending_validation"];
 
   const [
-    vendorRows, vendorBands, assessmentRows, assessmentBands, findingRows, findingSeverities,
+    vendorRows, vendorBands, assessmentRows, assessmentBands, findingRows, findingSeverities, findingStatuses,
     complianceRows, evidenceRows, vendorTrend, assessmentTrend, findingTrend,
     overdueFindings, submittedAssessments, pendingEvidence,
   ] = await Promise.all([
@@ -67,6 +67,10 @@ async function buildReport(organizationId: string, range: ReportRange) {
     Finding.aggregate([
       { $match: { organizationId: organization, createdAt: createdInRange } },
       { $group: { _id: "$severity", count: { $sum: 1 } } }, { $sort: { _id: 1 } },
+    ]),
+    Finding.aggregate([
+      { $match: { organizationId: organization, createdAt: createdInRange } },
+      { $group: { _id: "$status", count: { $sum: 1 } } }, { $sort: { _id: 1 } },
     ]),
     ControlImplementation.aggregate([
       { $match: { organizationId: organization } },
@@ -112,7 +116,7 @@ async function buildReport(organizationId: string, range: ReportRange) {
       vendorRisk: vendorBands.map(row => ({ label: row._id, count: row.count })),
       assessmentRisk: assessmentBands.map(row => ({ label: row._id, count: row.count })),
       findingSeverity: findingSeverities.map(row => ({ label: row._id, count: row.count })),
-      findingStatus: ["open", "in_progress", "pending_validation", "resolved", "accepted"].map(status => ({ label: status, count: status === "open" || status === "in_progress" || status === "pending_validation" ? finding.open : status === "resolved" ? finding.resolved : finding.accepted })),
+      findingStatus: findingStatuses.map(row => ({ label: row._id, count: row.count })),
       controlStatus: Object.entries(controls).map(([label, count]) => ({ label, count })),
       evidenceStatus: [{ label: "pending_review", count: evidence.pendingReview }, { label: "approved", count: evidence.approved }, { label: "rejected", count: evidence.rejected }, { label: "expired", count: evidence.expired }],
     },
