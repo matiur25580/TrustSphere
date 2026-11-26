@@ -4,6 +4,7 @@ import { z } from "zod";
 import { authenticate, requirePermission, requireTenant } from "../identity/identity.middleware.js";
 import { Vendor } from "../vendors/vendor.models.js";
 import { AssessmentEvent, VendorAssessment } from "./assessment.models.js";
+import { scoreResponses } from "./assessment.scoring.js";
 
 export const assessmentRouter = Router();
 assessmentRouter.use(authenticate, requireTenant);
@@ -46,29 +47,6 @@ const responseSchema = z.object({
 const saveSchema = z.object({ responses: z.array(responseSchema).max(50) }).strict();
 const reviewSchema = z.object({ decision: z.enum(["approved", "rejected"]), comment: z.string().trim().max(2000).optional() }).strict();
 
-function riskBand(score: number) {
-  return score >= 80 ? "critical" : score >= 60 ? "high" : score >= 35 ? "medium" : "low";
-}
-function scoreResponses(responses: Array<{ questionId: string; answer: string }>, questions: typeof template.questions) {
-  const values: Record<string, number> = { yes: 0, partial: 50, no: 100 };
-  const categoryMap = new Map<string, { weighted: number; weight: number }>();
-  for (const question of questions) {
-    const response = responses.find(item => item.questionId === question.id);
-    if (!response || response.answer === "not_applicable") continue;
-    const current = categoryMap.get(question.category) ?? { weighted: 0, weight: 0 };
-    current.weighted += values[response.answer] * question.weight;
-    current.weight += question.weight;
-    categoryMap.set(question.category, current);
-  }
-  const total = [...categoryMap.values()].reduce((sum, item) => sum + item.weight, 0);
-  const weighted = [...categoryMap.values()].reduce((sum, item) => sum + item.weighted, 0);
-  const score = total ? Math.round(weighted / total) : 0;
-  const breakdown = [...categoryMap.entries()].map(([category, item]) => ({
-    category, score: Math.round(item.weighted / item.weight), answeredWeight: item.weight,
-    totalWeight: questions.filter(question => question.category === category).reduce((sum, question) => sum + question.weight, 0),
-  }));
-  return { score, band: riskBand(score), breakdown };
-}
 function isReviewer(role: string) {
   return role === "owner" || role === "admin";
 }
