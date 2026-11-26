@@ -1,6 +1,6 @@
 import test, { before, after } from "node:test";
 import assert from "node:assert/strict";
-import mongoose, { Types } from "mongoose";
+import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import request from "supertest";
 import { MongoMemoryServer } from "mongodb-memory-server";
@@ -74,7 +74,12 @@ after(async () => {
 });
 
 function api(token: string, tenant = organizationId) {
-  return request(app).set("Authorization", `Bearer ${token}`).set("x-organization-id", tenant);
+  const headers = { Authorization: `Bearer ${token}`, "x-organization-id": tenant };
+  return {
+    get: (path: string) => request(app).get(path).set(headers),
+    post: (path: string) => request(app).post(path).set(headers),
+    patch: (path: string) => request(app).patch(path).set(headers),
+  };
 }
 
 test("findings API enforces tenant boundaries, RBAC, idempotency and independent validation", async () => {
