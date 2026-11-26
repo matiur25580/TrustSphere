@@ -16,7 +16,7 @@ type ReportRange = keyof typeof ranges;
 type TrendRow = { _id: string; count: number };
 
 function selectedRange(value: unknown): ReportRange {
-  return typeof value === "string" && value in ranges ? value as ReportRange : "30d";
+  return typeof value === "string" && Object.prototype.hasOwnProperty.call(ranges, value) ? value as ReportRange : "30d";
 }
 function mergeTrendRows(vendors: TrendRow[], assessments: TrendRow[], findings: TrendRow[]) {
   const days = new Map<string, { date: string; vendors: number; assessments: number; findings: number }>();
