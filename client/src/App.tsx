@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Activity, ArrowUpRight, Bell, Building2, CheckCircle2, ChevronDown, CircleAlert, ClipboardCheck, FileCheck2, LayoutDashboard, Search, Shield, ShieldCheck, Users, Workflow } from "lucide-react";
 
 const metrics = [
@@ -14,7 +15,23 @@ const vendors = [
   { name: "Vertex IT Partners", category: "Managed IT services", score: 21, status: "Approved", initials: "VI", color: "orange" },
 ];
 
+type HealthState = "checking" | "online" | "offline";
+
 function App() {
+  const [apiState, setApiState] = useState<HealthState>("checking");
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch("/api/v1/health", { signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) throw new Error("API unavailable");
+        return response.json() as Promise<{ status: string }>;
+      })
+      .then((payload) => setApiState(payload.status === "ok" ? "online" : "offline"))
+      .catch(() => setApiState("offline"));
+    return () => controller.abort();
+  }, []);
+
   return <div className="app-shell">
     <aside className="sidebar">
       <a className="brand" href="/"><span className="brand-mark"><Shield size={21}/></span><span>trust<span className="brand-light">sphere</span><small>RISK & COMPLIANCE</small></span></a>
@@ -47,7 +64,7 @@ function App() {
         </article>
       </section>
       <section className="panel vendor-panel" id="vendors"><div className="panel-heading"><div><h2>Vendor risk overview</h2><p>Monitor the latest assessments and vendor status</p></div><button className="subtle-button">View directory <ArrowUpRight size={14}/></button></div><div className="table-wrap"><table><thead><tr><th>VENDOR</th><th>CATEGORY</th><th>RISK SCORE</th><th>STATUS</th><th/></tr></thead><tbody>{vendors.map(v=><tr key={v.name}><td><div className="vendor-name"><span className={`vendor-avatar ${v.color}`}>{v.initials}</span><strong>{v.name}</strong></div></td><td>{v.category}</td><td><span className={`score ${v.score>=75?"danger":v.score>=50?"warning":"safe"}`}>{v.score}<small>/100</small></span></td><td><span className={`status ${v.status==="Approved"?"approved":v.status==="In assessment"?"progress":"review"}`}>{v.status}</span></td><td><button className="row-more" aria-label={`More actions for ${v.name}`}>···</button></td></tr>)}</tbody></table></div><div className="table-footer">Showing 4 sample vendors <a href="#vendors">Open vendor directory <ArrowUpRight size={14}/></a></div></section>
-      <footer className="footer"><span>© 2026 TrustSphere · Portfolio demo</span><span><i className="pulse-dot"/> API integration pending · Sample data only</span></footer>
+      <footer className="footer"><span>© 2026 TrustSphere · Portfolio demo</span><span><i className={apiState === "online" ? "pulse-dot" : "pulse-dot offline"}/> API {apiState === "checking" ? "checking" : apiState} · Sample data only</span></footer>
     </main>
   </div>;
 }
