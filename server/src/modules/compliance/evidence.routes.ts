@@ -144,7 +144,7 @@ evidenceRouter.get("/:id/download", requirePermission("compliance:read"), async 
     if (evidence.status !== "approved" && String(evidence.uploadedBy) !== req.auth!.userId && !["owner", "admin"].includes(req.tenant!.role)) {
       res.status(403).json({ error: { code: "EVIDENCE_NOT_APPROVED", message: "Only the uploader, an organization reviewer, or members with approved evidence access can download this file." } }); return;
     }
-    if (evidence.expiresAt && evidence.expiresAt <= new Date() && evidence.status === "approved") {
+    if (evidence.expiresAt && evidence.expiresAt.getTime() <= Date.now() && evidence.status === "approved") {
       evidence.status = "expired"; await evidence.save();
     }
     if (evidence.status === "expired") { res.status(410).json({ error: { code: "EVIDENCE_EXPIRED", message: "This evidence has expired and cannot be downloaded." } }); return; }
