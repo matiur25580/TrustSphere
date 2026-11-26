@@ -4,7 +4,7 @@
 
 TrustSphere is a multi-tenant SaaS platform concept for managing third-party vendors, assessing operational and cybersecurity risks, organizing compliance evidence, and coordinating remediation workflows.
 
-> **Project status:** Identity, tenant context, and the first vendor-management slice are implemented in the repository. Runtime/build verification and automated security tests are still pending; this is not a production-certified system.
+> **Project status:** Identity, tenant context, vendor management, and the first vendor security assessment workflow are implemented in the repository. Full runtime/API integration and cross-tenant security verification remain pending; this is not a production-certified system.
 
 ## Product goals
 
@@ -83,9 +83,9 @@ Set a unique `JWT_ACCESS_SECRET` in `server/.env` (at least 32 characters). For 
 
 Passwords are hashed with bcrypt. Refresh tokens are opaque, stored as hashes, rotated with an atomic one-time update, and sent in HttpOnly SameSite cookies. The API includes membership-based tenant context and owner/admin/analyst/viewer permission middleware. See [Identity module notes](server/src/modules/identity/README.md) and the [identity security test plan](server/src/modules/identity/identity.test-plan.md).
 
-The React client includes login and organization registration screens, in-memory access-token handling, refresh-cookie session restoration, a protected dashboard view, sign-out, organization switching, and a live tenant-context check. The authenticated dashboard includes a vendor directory with create/edit/archive actions, search, status and risk filters, and server pagination. The access token is deliberately not persisted in localStorage; the browser uses the HttpOnly refresh cookie to restore sessions.
+The React client includes login and organization registration screens, in-memory access-token handling, refresh-cookie session restoration, a protected dashboard view, sign-out, organization switching, and a live tenant-context check. The authenticated dashboard includes a vendor directory and an assessment workspace with versioned baseline questionnaires, answer capture, evidence references, risk breakdowns, and owner/admin review. The access token is deliberately not persisted in localStorage; the browser uses the HttpOnly refresh cookie to restore sessions.
 
-**Important:** this is an evolving portfolio implementation, not a security certification. Automated integration tests, audit-event persistence, invitations, MFA, assessment workflows, and production deployment hardening remain future work. Registration currently uses compensating cleanup for partial failures; it is not a multi-document MongoDB transaction. Dashboard analytics remain illustrative sample data, while the vendor directory reads and writes persisted records.
+**Important:** this is an evolving portfolio implementation, not a security certification. Automated API/security integration tests, audit-event tamper resistance, invitations, MFA, configurable template authoring, private object-storage integration, and production deployment hardening remain future work. Registration currently uses compensating cleanup for partial failures; it is not a multi-document MongoDB transaction. Dashboard analytics remain illustrative sample data, while the vendor directory reads and writes persisted records.
 
 ### Vendor Management API
 
@@ -99,6 +99,25 @@ All vendor routes require a bearer access token and an `x-organization-id` heade
 - `DELETE /api/v1/vendors/:id` — soft archive.
 
 Risk score v1 is a deterministic heuristic based on criticality, data sensitivity, and system access. It is not a completed assessment or regulatory rating. See [Vendor module notes](server/src/modules/vendors/README.md) and [vendor security test plan](server/src/modules/vendors/vendor.test-plan.md).
+
+### Vendor Security Assessment API
+
+Assessment endpoints require a bearer token, an active tenant membership, and the corresponding `risk:read` or `risk:write` permission.
+
+- `GET /api/v1/assessments/templates` — current published baseline template metadata and questions.
+- `GET /api/v1/assessments/summary` — tenant-scoped assessment counts and recent scored records.
+- `GET /api/v1/assessments?status=&vendorId=&page=1&limit=10` — filtered, paginated assessments.
+- `POST /api/v1/assessments` — create an assessment for an active vendor in the current organization; stores a template snapshot.
+- `GET /api/v1/assessments/:id` — assessment details and append-only event history.
+- `PUT /api/v1/assessments/:id/responses` — validate and save answers plus evidence metadata.
+- `POST /api/v1/assessments/:id/submit` — validate required answers and calculate the risk result.
+- `POST /api/v1/assessments/:id/review` — owner/admin approval or rejection with reviewer comment.
+
+The baseline template is version 1. Answers map to risk contributions (yes=0, partial=50, no=100); not-applicable answers are excluded from the weighted denominator. The result is a 0–100 risk score with category breakdown and model identifier `vendor-security-risk-v1`. The assessment score is separate from the vendor directory's inherent-risk heuristic.
+
+Evidence entries are metadata and opaque private-storage keys only. This repository does not upload, serve, or sign evidence files; connect a private object-storage provider and authorization layer before using real documents. Assessment events are append-only through the exposed API, but the event write and assessment update are not yet wrapped in a database transaction or tamper-proof external audit store.
+
+See [assessment module notes](server/src/modules/assessments/README.md) and [assessment security test plan](server/src/modules/assessments/assessment.test-plan.md).
 
 ## Engineering principles
 
