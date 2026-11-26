@@ -14,4 +14,4 @@ The MongoDB-backed integration suite in `../findings/finding.integration.test.ts
 - [ ] Concurrent transition behavior and event/write consistency are verified.
 - [ ] Browser-level incident workflow is tested.
 
-Run `npm run test --workspace server` from the repository root. Tests are committed but must pass in GitHub Actions before they are considered verified.
+Run `npm run test --workspace server` from the repository root. The current GitHub Actions run passed typecheck, production build and the MongoDB-backed API integration suite. Browser-level workflow tests and the remaining unchecked cases are still outstanding.
