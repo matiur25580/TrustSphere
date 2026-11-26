@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { isValidObjectId } from "mongoose";
+import { isValidObjectId, Types } from "mongoose";
 import { z } from "zod";
 import { authenticate, requirePermission, requireTenant } from "../identity/identity.middleware.js";
 import { Vendor } from "./vendor.models.js";
@@ -63,7 +63,7 @@ vendorRouter.get("/", requirePermission("vendors:read"), async (req, res, next) 
 vendorRouter.get("/summary", requirePermission("vendors:read"), async (req, res, next) => {
   try {
     const rows = await Vendor.aggregate([
-      { $match: { organizationId: new (await import("mongoose")).default.Types.ObjectId(req.tenant!.organizationId), archivedAt: null } },
+      { $match: { organizationId: new Types.ObjectId(req.tenant!.organizationId), archivedAt: null } },
       { $group: { _id: null, total: { $sum: 1 }, highRisk: { $sum: { $cond: [{ $in: ["$riskBand", ["high", "critical"]] }, 1, 0] } }, active: { $sum: { $cond: [{ $eq: ["$status", "active"] }, 1, 0] } }, review: { $sum: { $cond: [{ $eq: ["$status", "under_review"] }, 1, 0] } }, averageRisk: { $avg: "$riskScore" } } },
     ]);
     res.json({ data: rows[0] ?? { total: 0, highRisk: 0, active: 0, review: 0, averageRisk: 0 } });
@@ -99,7 +99,7 @@ vendorRouter.patch("/:id", requirePermission("vendors:write"), async (req, res, 
     if (!existing) { res.status(404).json({ error: { code: "VENDOR_NOT_FOUND", message: "Vendor not found." } }); return; }
     Object.assign(existing, input);
     if (input.name) existing.normalizedName = input.name.toLowerCase();
-    existing.updatedBy = req.auth!.userId as never;
+    existing.set("updatedBy", req.auth!.userId);
     const risk = calculateRisk({ criticality: existing.criticality, dataSensitivity: existing.dataSensitivity, accessLevel: existing.accessLevel });
     existing.riskScore = risk.riskScore;
     existing.riskBand = risk.riskBand;
