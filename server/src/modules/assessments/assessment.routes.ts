@@ -118,6 +118,11 @@ assessmentRouter.put("/:id/responses", requirePermission("risk:write"), async (r
   try {
     if (!isValidObjectId(req.params.id)) { res.status(404).json({ error: { code: "ASSESSMENT_NOT_FOUND", message: "Assessment not found." } }); return; }
     const input = saveSchema.parse(req.body);
+    const evidencePrefix = `${req.tenant!.organizationId}/`;
+    if (input.responses.some(response => response.evidence?.some(item => !item.storageKey.startsWith(evidencePrefix)))) {
+      res.status(400).json({ error: { code: "INVALID_EVIDENCE_SCOPE", message: "Evidence storage keys must be namespaced to the active organization." } });
+      return;
+    }
     const assessment = await VendorAssessment.findOne({ _id: req.params.id, organizationId: req.tenant!.organizationId });
     if (!assessment) { res.status(404).json({ error: { code: "ASSESSMENT_NOT_FOUND", message: "Assessment not found." } }); return; }
     if (!["draft", "in_progress"].includes(assessment.status)) { res.status(409).json({ error: { code: "ASSESSMENT_LOCKED", message: "Submitted assessments cannot be edited." } }); return; }
