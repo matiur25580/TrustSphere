@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { Activity, ArrowUpRight, Bell, Building2, CheckCircle2, ChevronDown, CircleAlert, ClipboardCheck, Eye, EyeOff, FileCheck2, LayoutDashboard, LockKeyhole, LogOut, Mail, Search, Shield, ShieldCheck, Users, Workflow } from "lucide-react";
+import { Activity, ArrowUpRight, Bell, Building2, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, CircleAlert, ClipboardCheck, Eye, EyeOff, FileCheck2, LayoutDashboard, LockKeyhole, LogOut, Mail, Pencil, Plus, Search, Shield, ShieldCheck, Trash2, Users, Workflow, X } from "lucide-react";
 
 const metrics = [
   { label: "Active vendors", value: "128", change: "+8 this month", icon: Building2, tone: "blue" },
@@ -150,6 +150,176 @@ function App() {
   return <Dashboard user={session.user} organization={activeOrganization} organizations={session.organizations} accessToken={session.accessToken} onLogout={handleLogout} onOrganizationChange={setActiveOrganization}/>;
 }
 
+
+type VendorRecord = {
+  _id: string;
+  name: string;
+  website: string;
+  category: string;
+  description: string;
+  contactName: string;
+  contactEmail: string;
+  criticality: "low" | "medium" | "high" | "critical";
+  dataSensitivity: "public" | "internal" | "confidential" | "restricted";
+  accessLevel: "none" | "limited" | "privileged";
+  status: "onboarding" | "active" | "under_review" | "suspended" | "offboarded";
+  riskScore: number;
+  riskBand: "low" | "medium" | "high" | "critical";
+  createdAt: string;
+};
+type VendorForm = Omit<VendorRecord, "_id" | "riskScore" | "riskBand" | "createdAt">;
+const emptyVendorForm: VendorForm = {
+  name: "", website: "", category: "", description: "", contactName: "", contactEmail: "",
+  criticality: "medium", dataSensitivity: "internal", accessLevel: "limited", status: "onboarding",
+};
+const statusLabel = (status: VendorRecord["status"]) => ({
+  onboarding: "Onboarding", active: "Active", under_review: "Under review", suspended: "Suspended", offboarded: "Offboarded",
+}[status]);
+const riskLabel = (band: VendorRecord["riskBand"]) => band.charAt(0).toUpperCase() + band.slice(1);
+
+function VendorDirectory({ accessToken, organizationId, canWrite }: { accessToken: string; organizationId: string; canWrite: boolean }) {
+  const [items, setItems] = useState<VendorRecord[]>([]);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("");
+  const [riskBand, setRiskBand] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState<VendorForm>(emptyVendorForm);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    async function loadVendors() {
+      setLoading(true);
+      setError("");
+      const params = new URLSearchParams({ page: String(page), limit: "8", sortBy: "createdAt", sortOrder: "desc" });
+      if (search.trim()) params.set("search", search.trim());
+      if (status) params.set("status", status);
+      if (riskBand) params.set("riskBand", riskBand);
+      try {
+        const response = await fetch(`/api/v1/vendors?${params.toString()}`, {
+          headers: { Authorization: `Bearer ${accessToken}`, "x-organization-id": organizationId },
+          signal: controller.signal,
+        });
+        const payload = await response.json() as { data?: VendorRecord[]; meta?: { total: number; totalPages: number }; error?: { message?: string } };
+        if (!response.ok) throw new Error(payload.error?.message || "Unable to load the vendor directory.");
+        setItems(payload.data ?? []);
+        setTotal(payload.meta?.total ?? 0);
+        setTotalPages(Math.max(1, payload.meta?.totalPages ?? 1));
+      } catch (cause) {
+        if (!(cause instanceof DOMException && cause.name === "AbortError")) {
+          setError(cause instanceof Error ? cause.message : "Unable to load vendors.");
+        }
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    }
+    void loadVendors();
+    return () => controller.abort();
+  }, [accessToken, organizationId, page, search, status, riskBand, refreshKey]);
+
+  function openCreate() {
+    setEditingId(null);
+    setForm(emptyVendorForm);
+    setEditorOpen(true);
+  }
+  function openEdit(vendor: VendorRecord) {
+    setEditingId(vendor._id);
+    setForm({
+      name: vendor.name, website: vendor.website || "", category: vendor.category, description: vendor.description || "",
+      contactName: vendor.contactName || "", contactEmail: vendor.contactEmail || "", criticality: vendor.criticality,
+      dataSensitivity: vendor.dataSensitivity, accessLevel: vendor.accessLevel, status: vendor.status,
+    });
+    setEditorOpen(true);
+  }
+  function updateForm<K extends keyof VendorForm>(key: K, value: VendorForm[K]) {
+    setForm(current => ({ ...current, [key]: value }));
+  }
+  async function saveVendor(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSaving(true);
+    setError("");
+    try {
+      const response = await fetch(editingId ? `/api/v1/vendors/${editingId}` : "/api/v1/vendors", {
+        method: editingId ? "PATCH" : "POST",
+        headers: { Authorization: `Bearer ${accessToken}`, "x-organization-id": organizationId, "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const payload = await response.json() as { error?: { message?: string } };
+      if (!response.ok) throw new Error(payload.error?.message || "Unable to save this vendor.");
+      setEditorOpen(false);
+      setPage(1);
+      setRefreshKey(value => value + 1);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to save this vendor.");
+    } finally {
+      setSaving(false);
+    }
+  }
+  async function archiveVendor(vendor: VendorRecord) {
+    if (!window.confirm(`Archive ${vendor.name}? It will be removed from the active directory.`)) return;
+    try {
+      const response = await fetch(`/api/v1/vendors/${vendor._id}`, {
+        method: "DELETE", headers: { Authorization: `Bearer ${accessToken}`, "x-organization-id": organizationId },
+      });
+      if (!response.ok) throw new Error("Unable to archive this vendor.");
+      setRefreshKey(value => value + 1);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to archive this vendor.");
+    }
+  }
+
+  return <section className="panel vendor-panel live-vendor-panel" id="vendors">
+    <div className="panel-heading vendor-directory-heading">
+      <div><h2>Vendor risk directory</h2><p>Live organization records · tenant-scoped vendor operations</p></div>
+      {canWrite && <button className="primary-button vendor-add-button" onClick={openCreate}><Plus size={15}/> Add vendor</button>}
+    </div>
+    <div className="vendor-toolbar">
+      <label className="vendor-search"><Search size={15}/><input aria-label="Search vendors" placeholder="Search name, category or contact..." value={search} onChange={event => { setSearch(event.target.value); setPage(1); }}/></label>
+      <select aria-label="Filter by status" value={status} onChange={event => { setStatus(event.target.value); setPage(1); }}><option value="">All statuses</option><option value="onboarding">Onboarding</option><option value="active">Active</option><option value="under_review">Under review</option><option value="suspended">Suspended</option><option value="offboarded">Offboarded</option></select>
+      <select aria-label="Filter by risk" value={riskBand} onChange={event => { setRiskBand(event.target.value); setPage(1); }}><option value="">All risk levels</option><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select>
+    </div>
+    {error && <div className="vendor-error" role="alert">{error}</div>}
+    {editorOpen && <form className="vendor-editor" onSubmit={saveVendor}>
+      <div className="vendor-editor-title"><div><strong>{editingId ? "Update vendor profile" : "Register a vendor"}</strong><small>Risk score is calculated automatically from the classification inputs.</small></div><button type="button" className="vendor-icon-button" onClick={() => setEditorOpen(false)} aria-label="Close editor"><X size={17}/></button></div>
+      <div className="vendor-form-grid">
+        <label>Vendor name *<input required minLength={2} maxLength={160} value={form.name} onChange={event => updateForm("name", event.target.value)} placeholder="e.g. Northstar Cloud Services"/></label>
+        <label>Service category *<input required minLength={2} maxLength={80} value={form.category} onChange={event => updateForm("category", event.target.value)} placeholder="Cloud infrastructure"/></label>
+        <label>Website<input type="url" value={form.website} onChange={event => updateForm("website", event.target.value)} placeholder="https://vendor.example"/></label>
+        <label>Contact name<input value={form.contactName} onChange={event => updateForm("contactName", event.target.value)} placeholder="Primary contact"/></label>
+        <label>Contact email<input type="email" value={form.contactEmail} onChange={event => updateForm("contactEmail", event.target.value)} placeholder="security@vendor.example"/></label>
+        <label>Criticality<select value={form.criticality} onChange={event => updateForm("criticality", event.target.value as VendorForm["criticality"])}><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="critical">Critical</option></select></label>
+        <label>Data sensitivity<select value={form.dataSensitivity} onChange={event => updateForm("dataSensitivity", event.target.value as VendorForm["dataSensitivity"])}><option value="public">Public</option><option value="internal">Internal</option><option value="confidential">Confidential</option><option value="restricted">Restricted</option></select></label>
+        <label>System access<select value={form.accessLevel} onChange={event => updateForm("accessLevel", event.target.value as VendorForm["accessLevel"])}><option value="none">No access</option><option value="limited">Limited</option><option value="privileged">Privileged</option></select></label>
+        <label>Lifecycle status<select value={form.status} onChange={event => updateForm("status", event.target.value as VendorForm["status"])}><option value="onboarding">Onboarding</option><option value="active">Active</option><option value="under_review">Under review</option><option value="suspended">Suspended</option><option value="offboarded">Offboarded</option></select></label>
+        <label className="vendor-description-field">Description<textarea rows={2} maxLength={2000} value={form.description} onChange={event => updateForm("description", event.target.value)} placeholder="Describe the service and business dependency..."/></label>
+      </div>
+      <div className="vendor-editor-actions"><button type="button" className="subtle-button" onClick={() => setEditorOpen(false)}>Cancel</button><button type="submit" className="primary-button" disabled={saving}>{saving ? "Saving..." : editingId ? "Save changes" : "Create vendor"}</button></div>
+    </form>}
+    <div className="table-wrap"><table><thead><tr><th>VENDOR</th><th>CATEGORY</th><th>CRITICALITY</th><th>RISK SCORE</th><th>STATUS</th>{canWrite && <th>ACTIONS</th>}</tr></thead>
+      <tbody>
+        {loading ? <tr><td colSpan={canWrite ? 6 : 5} className="vendor-empty">Loading vendor records...</td></tr>
+        : items.length === 0 ? <tr><td colSpan={canWrite ? 6 : 5} className="vendor-empty">No vendors match these filters. Add a vendor to start your directory.</td></tr>
+        : items.map(vendor => <tr key={vendor._id}>
+          <td><div className="vendor-name"><span className="vendor-avatar blue">{vendor.name.split(/\s+/).slice(0,2).map(part => part[0]).join("").toUpperCase()}</span><span className="vendor-name-copy"><strong>{vendor.name}</strong><small>{vendor.contactEmail || vendor.website || "No contact details"}</small></span></div></td>
+          <td>{vendor.category}</td><td><span className={`criticality-tag ${vendor.criticality}`}>{vendor.criticality}</span></td>
+          <td><span className={`score ${vendor.riskBand === "critical" || vendor.riskBand === "high" ? "danger" : vendor.riskBand === "medium" ? "warning" : "safe"}`}>{vendor.riskScore}<small>/100 · {riskLabel(vendor.riskBand)}</small></span></td>
+          <td><span className={`status ${vendor.status === "active" ? "approved" : vendor.status === "under_review" || vendor.status === "onboarding" ? "progress" : "review"}`}>{statusLabel(vendor.status)}</span></td>
+          {canWrite && <td><div className="vendor-row-actions"><button type="button" onClick={() => openEdit(vendor)} aria-label={`Edit ${vendor.name}`} title="Edit vendor"><Pencil size={14}/></button><button type="button" onClick={() => void archiveVendor(vendor)} aria-label={`Archive ${vendor.name}`} title="Archive vendor"><Trash2 size={14}/></button></div></td>}
+        </tr>)}
+      </tbody>
+    </table></div>
+    <div className="table-footer"><span>{total === 0 ? "No records" : `Showing ${(page - 1) * 8 + 1}–${Math.min(page * 8, total)} of ${total} vendors`}</span><div className="vendor-pagination"><button type="button" disabled={page <= 1 || loading} onClick={() => setPage(value => value - 1)} aria-label="Previous page"><ChevronLeft size={15}/></button><span>Page {page} of {totalPages}</span><button type="button" disabled={page >= totalPages || loading} onClick={() => setPage(value => value + 1)} aria-label="Next page"><ChevronRight size={15}/></button></div></div>
+    <p className="vendor-scoring-note"><ShieldCheck size={13}/> Risk score v1 is a deterministic portfolio heuristic, not a completed security assessment.</p>
+  </section>;
+}
+
 function Dashboard({ user, organization, organizations, accessToken, onLogout, onOrganizationChange }: { user: UserProfile; organization: OrganizationProfile; organizations: OrganizationProfile[]; accessToken: string; onLogout: () => void; onOrganizationChange: (organization: OrganizationProfile) => void }) {
   const [apiState, setApiState] = useState<HealthState>("checking");
   const [tenantState, setTenantState] = useState<"checking" | "verified" | "denied">("checking");
@@ -194,7 +364,7 @@ function Dashboard({ user, organization, organizations, accessToken, onLogout, o
     </aside>
     <main className="main-content">
       <header className="topbar"><div className="breadcrumbs">{organization.name} <span>/</span> <strong>Overview</strong></div><div className="top-actions">{organizations.length > 1 && <select className="organization-select" aria-label="Switch organization" value={organization.id} onChange={event => { const next = organizations.find(item => item.id === event.target.value); if (next) onOrganizationChange(next); }}><option value="" disabled>Workspace</option>{organizations.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select>}<label className="search-box"><Search size={16}/><input aria-label="Search workspace" placeholder="Search anything..."/><kbd>⌘ K</kbd></label><button className="icon-button" aria-label="Notifications"><Bell size={18}/><i/></button><div className="top-avatar">{user.name.split(" ").map(part => part[0]).slice(0,2).join("").toUpperCase()}</div></div></header>
-      <section className="page-heading" id="overview"><div><p className="eyebrow">{organization.name.toUpperCase()} · {tenantState === "verified" ? "TENANT VERIFIED" : tenantState === "checking" ? "VERIFYING ACCESS" : "ACCESS CHECK FAILED"} · SAMPLE DATA</p><h1>Risk & compliance overview <span>✦</span></h1><p className="subtitle">A clear view of vendor exposure, assessments, and compliance activity.</p></div><button className="primary-button"><ArrowUpRight size={16}/> Generate report</button></section>
+      <section className="page-heading" id="overview"><div><p className="eyebrow">{organization.name.toUpperCase()} · {tenantState === "verified" ? "TENANT VERIFIED" : tenantState === "checking" ? "VERIFYING ACCESS" : "ACCESS CHECK FAILED"} · LIVE VENDOR DIRECTORY · ILLUSTRATIVE ANALYTICS</p><h1>Risk & compliance overview <span>✦</span></h1><p className="subtitle">A clear view of vendor exposure, assessments, and compliance activity.</p></div><button className="primary-button"><ArrowUpRight size={16}/> Generate report</button></section>
       <section className="metric-grid" aria-label="Key metrics">{metrics.map(({label,value,change,icon:Icon,tone})=><article className="metric-card" key={label}><div className="metric-top"><span>{label}</span><span className={`metric-icon ${tone}`}><Icon size={18}/></span></div><strong className="metric-value">{value}</strong><span className="metric-change">{change}</span></article>)}</section>
       <section className="content-grid">
         <article className="panel"><div className="panel-heading"><div><h2>Risk exposure</h2><p>Vendor risk distribution across your portfolio</p></div><button className="subtle-button">Last 30 days <ChevronDown size={14}/></button></div><div className="risk-summary"><div className="donut"><div><strong>128</strong><span>Total vendors</span></div></div><div className="legend"><span><i className="dot critical"/>Critical <strong>9</strong></span><span><i className="dot high"/>High <strong>18</strong></span><span><i className="dot medium"/>Medium <strong>42</strong></span><span><i className="dot low"/>Low <strong>59</strong></span></div></div><div className="panel-foot"><span><Activity size={15}/> Illustrative sample data</span><a href="#vendors">View vendors <ArrowUpRight size={14}/></a></div></article>
@@ -205,7 +375,7 @@ function Dashboard({ user, organization, organizations, accessToken, onLogout, o
           <div className="action-item"><span className="action-icon green"><CheckCircle2 size={17}/></span><span><strong>Remediation update</strong><small>Quarterly access review · Today</small></span><ArrowUpRight size={15}/></div>
         </article>
       </section>
-      <section className="panel vendor-panel" id="vendors"><div className="panel-heading"><div><h2>Vendor risk overview</h2><p>Monitor the latest assessments and vendor status</p></div><button className="subtle-button">View directory <ArrowUpRight size={14}/></button></div><div className="table-wrap"><table><thead><tr><th>VENDOR</th><th>CATEGORY</th><th>RISK SCORE</th><th>STATUS</th><th/></tr></thead><tbody>{vendors.map(v=><tr key={v.name}><td><div className="vendor-name"><span className={`vendor-avatar ${v.color}`}>{v.initials}</span><strong>{v.name}</strong></div></td><td>{v.category}</td><td><span className={`score ${v.score>=75?"danger":v.score>=50?"warning":"safe"}`}>{v.score}<small>/100</small></span></td><td><span className={`status ${v.status==="Approved"?"approved":v.status==="In assessment"?"progress":"review"}`}>{v.status}</span></td><td><button className="row-more" aria-label={`More actions for ${v.name}`}>···</button></td></tr>)}</tbody></table></div><div className="table-footer">Showing 4 sample vendors <a href="#vendors">Open vendor directory <ArrowUpRight size={14}/></a></div></section>
+      <VendorDirectory accessToken={accessToken} organizationId={organization.id} canWrite={["owner", "admin", "analyst"].includes(organization.role)}/>
       <footer className="footer"><span>© 2026 TrustSphere · Portfolio demo</span><span><i className={apiState === "online" ? "pulse-dot" : "pulse-dot offline"}/> API {apiState === "checking" ? "checking" : apiState} · Tenant {tenantState} · Sample data only</span></footer>
     </main>
   </div>;
