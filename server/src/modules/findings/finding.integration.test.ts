@@ -26,6 +26,7 @@ let outsiderToken = "";
 let organizationId = "";
 let otherOrganizationId = "";
 let assessmentId = "";
+let vendorId = "";
 let findingId = "";
 
 before(async () => {
@@ -57,6 +58,7 @@ before(async () => {
     criticality: "high", dataSensitivity: "confidential", accessLevel: "privileged",
     status: "active", riskScore: 77, riskBand: "high",
   });
+  vendorId = String(vendor._id);
   const assessment = await VendorAssessment.create({
     organizationId: organization._id, vendorId: vendor._id, createdBy: analyst._id,
     templateId: "trustsphere-vendor-security-baseline", templateVersion: 1,
@@ -83,6 +85,18 @@ function api(token: string, tenant = organizationId) {
 }
 
 test("findings API enforces tenant boundaries, RBAC, idempotency and independent validation", async () => {
+  const viewerVendorRead = await api(viewerToken).get(`/api/v1/vendors/${vendorId}`);
+  assert.equal(viewerVendorRead.status, 200);
+  const viewerVendorWrite = await api(viewerToken).post("/api/v1/vendors").send({});
+  assert.equal(viewerVendorWrite.status, 403);
+  const outsiderVendorRead = await api(outsiderToken, otherOrganizationId).get(`/api/v1/vendors/${vendorId}`);
+  assert.equal(outsiderVendorRead.status, 404);
+
+  const viewerAssessmentRead = await api(viewerToken).get(`/api/v1/assessments/${assessmentId}`);
+  assert.equal(viewerAssessmentRead.status, 200);
+  const outsiderAssessmentRead = await api(outsiderToken, otherOrganizationId).get(`/api/v1/assessments/${assessmentId}`);
+  assert.equal(outsiderAssessmentRead.status, 404);
+
   const viewerRead = await api(viewerToken).get("/api/v1/findings");
   assert.equal(viewerRead.status, 200);
   assert.deepEqual(viewerRead.body.data, []);
