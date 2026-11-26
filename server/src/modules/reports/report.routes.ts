@@ -79,7 +79,7 @@ async function buildReport(organizationId: string, range: ReportRange) {
     ComplianceEvidence.aggregate([
       { $match: { organizationId: organization } },
       { $group: { _id: null,
-        pendingReview: { $sum: { $cond: [{ $and: [{ $eq: ["$status", "pending_review"] }, { $gt: ["$expiresAt", generatedAt] }] }, 1, { $cond: [{ $and: [{ $eq: ["$status", "pending_review"] }, { $eq: ["$expiresAt", null] }] }, 1, 0] }] } },
+        pendingReview: { $sum: { $cond: [{ $and: [{ $eq: ["$status", "pending_review"] }, { $or: [{ $eq: ["$expiresAt", null] }, { $gt: ["$expiresAt", generatedAt] }] }] }, 1, 0] } },
         approved: { $sum: { $cond: [{ $and: [{ $eq: ["$status", "approved"] }, { $or: [{ $eq: ["$expiresAt", null] }, { $gt: ["$expiresAt", generatedAt] }] }] }, 1, 0] } },
         rejected: { $sum: { $cond: [{ $eq: ["$status", "rejected"] }, 1, 0] } },
         expired: { $sum: { $cond: [{ $or: [{ $eq: ["$status", "expired"] }, { $and: [{ $ne: ["$expiresAt", null] }, { $lte: ["$expiresAt", generatedAt] }] }] }, 1, 0] } },
