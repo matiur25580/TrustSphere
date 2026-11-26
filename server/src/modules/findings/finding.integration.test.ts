@@ -215,6 +215,7 @@ test("evidence API validates uploads, scopes access and requires independent app
   assert.equal(events.status, 200);
   assert.ok(events.body.data.some((event: { action: string }) => event.action === "uploaded"));
   assert.ok(events.body.data.some((event: { action: string }) => event.action === "approved"));
+  assert.ok(events.body.data.some((event: { action: string }) => event.action === "downloaded"));
   assert.equal(await ComplianceEvidence.countDocuments({ organizationId, controlId: "access-mfa" }), 1);
 
   const expiringUpload = await api(analystToken).post("/api/v1/compliance/evidence")
