@@ -18,18 +18,19 @@ type TrendRow = { _id: string; count: number };
 function selectedRange(value: unknown): ReportRange {
   return typeof value === "string" && Object.prototype.hasOwnProperty.call(ranges, value) ? value as ReportRange : "30d";
 }
-function mergeTrendRows(vendors: TrendRow[], assessments: TrendRow[], findings: TrendRow[]) {
+function mergeTrendRows(vendors: TrendRow[], assessments: TrendRow[], findings: TrendRow[], startDate: Date, endDate: Date) {
   const days = new Map<string, { date: string; vendors: number; assessments: number; findings: number }>();
-  for (const row of vendors) days.set(row._id, { date: row._id, vendors: row.count, assessments: 0, findings: 0 });
-  for (const row of assessments) {
-    const item = days.get(row._id) ?? { date: row._id, vendors: 0, assessments: 0, findings: 0 };
-    item.assessments = row.count; days.set(row._id, item);
+  const cursor = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate()));
+  const last = Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth(), endDate.getUTCDate());
+  while (cursor.getTime() <= last) {
+    const date = cursor.toISOString().slice(0, 10);
+    days.set(date, { date, vendors: 0, assessments: 0, findings: 0 });
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
   }
-  for (const row of findings) {
-    const item = days.get(row._id) ?? { date: row._id, vendors: 0, assessments: 0, findings: 0 };
-    item.findings = row.count; days.set(row._id, item);
-  }
-  return [...days.values()].sort((a, b) => a.date.localeCompare(b.date));
+  for (const row of vendors) { const item = days.get(row._id); if (item) item.vendors = row.count; }
+  for (const row of assessments) { const item = days.get(row._id); if (item) item.assessments = row.count; }
+  for (const row of findings) { const item = days.get(row._id); if (item) item.findings = row.count; }
+  return [...days.values()];
 }
 
 async function buildReport(organizationId: string, range: ReportRange) {
@@ -120,7 +121,7 @@ async function buildReport(organizationId: string, range: ReportRange) {
       controlStatus: Object.entries(controls).map(([label, count]) => ({ label, count })),
       evidenceStatus: [{ label: "pending_review", count: evidence.pendingReview }, { label: "approved", count: evidence.approved }, { label: "rejected", count: evidence.rejected }, { label: "expired", count: evidence.expired }],
     },
-    trend: mergeTrendRows(vendorTrend, assessmentTrend, findingTrend),
+    trend: mergeTrendRows(vendorTrend, assessmentTrend, findingTrend, startDate, generatedAt),
     attention: {
       overdueFindings: overdueFindings.map(item => ({ id: String(item._id), title: item.title, severity: item.severity, priority: item.priority, status: item.status, dueDate: item.dueDate, vendorName: typeof item.vendorId === "object" && item.vendorId ? (item.vendorId as { name?: string }).name ?? "Vendor" : "Vendor" })),
       assessmentsAwaitingReview: submittedAssessments.map(item => ({ id: String(item._id), title: item.title, submittedAt: item.submittedAt, vendorName: typeof item.vendorId === "object" && item.vendorId ? (item.vendorId as { name?: string }).name ?? "Vendor" : "Vendor" })),
