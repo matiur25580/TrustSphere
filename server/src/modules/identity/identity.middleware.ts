@@ -37,7 +37,7 @@ export async function requireTenant(req: Request, res: Response, next: NextFunct
       res.status(400).json({ error: { code: "INVALID_ORGANIZATION_ID", message: "The selected organization identifier is invalid." } });
       return;
     }
-    const [membership, organization] = await Promise.all([
+    const [membership, organization]: [any, any] = await Promise.all([
       Membership.findOne({ userId: req.auth.userId, organizationId, status: "active" }).lean(),
       Organization.findOne({ _id: organizationId, status: "active" }).select("_id").lean(),
     ]);
