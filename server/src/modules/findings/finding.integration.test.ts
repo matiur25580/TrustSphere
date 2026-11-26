@@ -16,6 +16,7 @@ const { User, Organization, Membership } = await import("../identity/identity.mo
 const { Vendor } = await import("../vendors/vendor.models.js");
 const { VendorAssessment } = await import("../assessments/assessment.models.js");
 const { Finding } = await import("./finding.models.js");
+const { ControlImplementation } = await import("../compliance/compliance.models.js");
 
 const database = await MongoMemoryServer.create();
 const app = createApp();
@@ -81,6 +82,7 @@ function api(token: string, tenant = organizationId) {
     get: (path: string) => request(app).get(path).set(headers),
     post: (path: string) => request(app).post(path).set(headers),
     patch: (path: string) => request(app).patch(path).set(headers),
+    put: (path: string) => request(app).put(path).set(headers),
   };
 }
 
@@ -144,4 +146,22 @@ test("findings API enforces tenant boundaries, RBAC, idempotency and independent
   assert.equal(detail.status, 200);
   assert.ok(detail.body.data.events.some((entry: { action: string }) => entry.action === "created"));
   assert.ok(detail.body.data.events.some((entry: { action: string }) => entry.action === "validated"));
+
+  const viewerFrameworks = await api(viewerToken).get("/api/v1/compliance/frameworks");
+  assert.equal(viewerFrameworks.status, 200);
+  assert.equal(viewerFrameworks.body.data.length, 2);
+  const viewerControlWrite = await api(viewerToken).put("/api/v1/compliance/controls/access-mfa")
+    .send({ status: "implemented" });
+  assert.equal(viewerControlWrite.status, 403);
+  const implementation = await api(analystToken).put("/api/v1/compliance/controls/access-mfa")
+    .send({ status: "implemented", owner: "Identity Engineering", notes: "MFA is enforced for privileged accounts." });
+  assert.equal(implementation.status, 200);
+  assert.equal(implementation.body.data.status, "implemented");
+  const complianceSummary = await api(analystToken).get("/api/v1/compliance/summary");
+  assert.equal(complianceSummary.status, 200);
+  assert.equal(complianceSummary.body.data.implemented, 1);
+  const otherTenantControls = await api(outsiderToken, otherOrganizationId).get("/api/v1/compliance/controls");
+  assert.equal(otherTenantControls.status, 200);
+  assert.equal(otherTenantControls.body.data[0].implementation.status, "not_started");
+  assert.equal(await ControlImplementation.countDocuments({ organizationId }), 1);
 });
