@@ -39,15 +39,6 @@ Status is intentionally conservative: unchecked implementation items have not ye
 - [x] Evidence expiry tracking and authorized download (malware scanning and lifecycle cleanup pending)
 - [x] Control implementation gap status and API-level change history (runtime verification pending)
 
-## Milestone 8 — Enterprise reporting & risk intelligence
-- [x] Tenant-scoped executive metrics and date-range reporting (automated API verification pending)
-- [x] Vendor and assessment risk distributions
-- [x] Finding severity, lifecycle and overdue remediation reporting
-- [x] Compliance coverage and evidence lifecycle reporting
-- [x] Daily activity trends and operational attention queues
-- [x] CSV export and print-optimized PDF workflow (browser print dialog)
-- [ ] Scheduled report delivery and saved report definitions
-
 ## Milestone 5 — Operations
 - [ ] Remediation plans and tasks
 - [ ] Incident management
@@ -69,3 +60,13 @@ Status is intentionally conservative: unchecked implementation items have not ye
 - [ ] Backup/restore and retention procedures
 - [ ] Threat model and security review
 - [ ] Deployment documentation
+
+## Milestone 8 — Enterprise reporting & risk intelligence
+- [x] Tenant-scoped executive metrics and date-range reporting (automated API verification pending)
+- [x] Vendor and assessment risk distributions
+- [x] Finding severity, lifecycle and overdue remediation reporting
+- [x] Compliance coverage and evidence lifecycle reporting
+- [x] Daily activity trends and operational attention queues
+- [x] CSV export and print-optimized PDF workflow (browser print dialog)
+- [ ] Scheduled report delivery and saved report definitions
+
