@@ -1,6 +1,5 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
 import { z } from "zod";
 import { env } from "../../config/env.js";
 import { Membership, Organization, RefreshSession, User } from "./identity.models.js";
@@ -119,14 +118,17 @@ identityRouter.post("/refresh", requireTrustedOrigin, async (req, res, next) => 
       return;
     }
     const tokenHash = hashToken(rawToken);
-    const session = await RefreshSession.findOne({ tokenHash, revokedAt: null, expiresAt: { $gt: new Date() } }).select("+tokenHash");
+    // Atomic compare-and-set prevents two concurrent requests from reusing one refresh token.
+    const session = await RefreshSession.findOneAndUpdate(
+      { tokenHash, revokedAt: null, expiresAt: { $gt: new Date() } },
+      { $set: { revokedAt: new Date() } },
+      { new: true },
+    );
     if (!session) {
       clearRefreshCookie(res);
-      res.status(401).json({ error: { code: "REFRESH_INVALID", message: "Refresh session is invalid or expired." } });
+      res.status(401).json({ error: { code: "REFRESH_INVALID", message: "Refresh session is invalid or already used." } });
       return;
     }
-    session.revokedAt = new Date();
-    await session.save();
     const user = await User.findOne({ _id: session.userId, status: "active" });
     if (!user) {
       clearRefreshCookie(res);
