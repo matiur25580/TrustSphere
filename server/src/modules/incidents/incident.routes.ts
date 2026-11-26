@@ -54,7 +54,7 @@ async function validateLinks(organizationId: string, input: { vendorId?: string;
     if (!vendor) return "The selected vendor does not exist in this organization.";
   }
   if (input.findingId) {
-    const finding = await Finding.findOne({ _id: input.findingId, organizationId }).select("_id vendorId").lean();
+    const finding: any = await Finding.findOne({ _id: input.findingId, organizationId }).select("_id vendorId").lean();
     if (!finding) return "The selected finding does not exist in this organization.";
     if (input.vendorId && String(finding.vendorId) !== input.vendorId) return "The linked finding belongs to a different vendor.";
   }
@@ -131,7 +131,7 @@ incidentRouter.post("/", requirePermission("security:write"), async (req, res, n
 incidentRouter.get("/:id", requirePermission("security:read"), async (req, res, next) => {
   try {
     if (!isValidObjectId(req.params.id)) { notFound(res); return; }
-    const incident = await Incident.findOne({ _id: req.params.id, organizationId: req.tenant!.organizationId }).populate("vendorId", "name").populate("findingId", "title severity status").populate("assignedTo", "name email").lean();
+    const incident: any = await Incident.findOne({ _id: req.params.id, organizationId: req.tenant!.organizationId }).populate("vendorId", "name").populate("findingId", "title severity status").populate("assignedTo", "name email").lean();
     if (!incident) { notFound(res); return; }
     const events = await IncidentEvent.find({ incidentId: incident._id, organizationId: req.tenant!.organizationId }).sort({ occurredAt: 1 }).populate("actorId", "name").lean();
     res.json({ data: { ...incident, events } });
@@ -214,7 +214,7 @@ incidentRouter.post("/:id/comments", requirePermission("security:write"), async 
   try {
     if (!isValidObjectId(req.params.id)) { notFound(res); return; }
     const input = commentSchema.parse(req.body);
-    const incident = await Incident.findOne({ _id: req.params.id, organizationId: req.tenant!.organizationId }).select("_id status").lean();
+    const incident: any = await Incident.findOne({ _id: req.params.id, organizationId: req.tenant!.organizationId }).select("_id status").lean();
     if (!incident) { notFound(res); return; }
     if (incident.status === "closed") { res.status(409).json({ error: { code: "INCIDENT_CLOSED", message: "Reopen the incident before adding investigation notes." } }); return; }
     await appendEvent({ organizationId: req.tenant!.organizationId, incidentId: String(incident._id), actorId: req.auth!.userId, action: "comment_added", details: { comment: input.comment } });
