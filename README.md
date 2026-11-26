@@ -23,7 +23,7 @@ TrustSphere is a multi-tenant SaaS platform concept for managing third-party ven
 | Database | MongoDB, Mongoose |
 | Validation | Zod |
 | Security baseline | Helmet, CORS allow-list, rate limiting |
-| Testing | Vitest, Supertest (planned in foundation) |
+| Testing | Node.js test runner via tsx (scoring unit tests added) |
 | Realtime / jobs | Socket.IO, Redis, BullMQ (later phases) |
 | AI | Provider adapter (Gemini integration planned) |
 
@@ -118,6 +118,10 @@ The baseline template is version 1. Answers map to risk contributions (yes=0, pa
 Evidence entries are metadata and opaque private-storage keys only. This repository does not upload, serve, or sign evidence files; connect a private object-storage provider and authorization layer before using real documents. Assessment events are append-only through the exposed API, but the event write and assessment update are not yet wrapped in a database transaction or tamper-proof external audit store.
 
 See [assessment module notes](server/src/modules/assessments/README.md) and [assessment security test plan](server/src/modules/assessments/assessment.test-plan.md).
+
+### Run assessment scoring tests
+
+From the repository root, run `npm run test --workspace server`. These are pure scoring unit tests; they do not replace API, MongoDB, or cross-tenant integration tests.
 
 ## Engineering principles
 
