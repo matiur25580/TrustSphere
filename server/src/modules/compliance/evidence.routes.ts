@@ -1,6 +1,6 @@
 import { randomUUID, createHash } from "node:crypto";
 import { createReadStream } from "node:fs";
-import { mkdir, writeFile, unlink } from "node:fs/promises";
+import { mkdir, writeFile, unlink, access } from "node:fs/promises";
 import path from "node:path";
 import { Router } from "express";
 import multer from "multer";
@@ -81,7 +81,8 @@ evidenceRouter.post("/", requirePermission("compliance:write"), uploadLimiter, (
         });
         createdEvidenceId = String(evidence._id);
         await appendEvidenceEvent({ organizationId, evidenceId: createdEvidenceId, actorId: req.auth!.userId, action: "uploaded", details: { controlId, sizeBytes: evidence.sizeBytes } });
-        res.status(201).json({ data: evidence });
+        const safeEvidence = evidence.toObject(); delete safeEvidence.storageKey;
+        res.status(201).json({ data: safeEvidence });
       } catch (databaseError) {
         if (createdEvidenceId) await ComplianceEvidence.deleteOne({ _id: createdEvidenceId, organizationId }).catch(() => undefined);
         await unlink(targetPath).catch(() => undefined);
@@ -132,7 +133,8 @@ evidenceRouter.post("/:id/review", requirePermission("compliance:write"), async 
     );
     if (!evidence) { res.status(409).json({ error: { code: "EVIDENCE_ALREADY_REVIEWED", message: "Evidence was already reviewed by another request." } }); return; }
     await appendEvidenceEvent({ organizationId: req.tenant!.organizationId, evidenceId: String(evidence._id), actorId: req.auth!.userId, action: input.decision, details: { comment: input.comment ?? "" } });
-    res.json({ data: evidence });
+    const safeEvidence = evidence.toObject(); delete safeEvidence.storageKey;
+    res.json({ data: safeEvidence });
   } catch (error) { next(error); }
 });
 
@@ -149,6 +151,9 @@ evidenceRouter.get("/:id/download", requirePermission("compliance:read"), async 
     }
     if (evidence.status === "expired") { res.status(410).json({ error: { code: "EVIDENCE_EXPIRED", message: "This evidence has expired and cannot be downloaded." } }); return; }
     const filePath = path.join(storageDirectory, req.tenant!.organizationId, evidence.storageKey);
+    try { await access(filePath); } catch {
+      res.status(404).json({ error: { code: "EVIDENCE_FILE_MISSING", message: "The stored evidence file is unavailable." } }); return;
+    }
     res.setHeader("Content-Type", evidence.mimeType);
     res.setHeader("Content-Length", evidence.sizeBytes);
     res.setHeader("Content-Disposition", `attachment; filename*=UTF-8''${encodeURIComponent(evidence.fileName)}`);
