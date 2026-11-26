@@ -226,4 +226,12 @@ test("evidence API validates uploads, scopes access and requires independent app
   assert.ok(evidenceAfterExpiry.body.data.some((item: { _id: string; status: string }) => item._id === expiredId && item.status === "expired"));
   const expiredDownload = await api(ownerToken).get(`/api/v1/compliance/evidence/${expiredId}/download`);
   assert.equal(expiredDownload.status, 410);
+
+  const ownerUpload = await api(ownerToken).post("/api/v1/compliance/evidence")
+    .field("controlId", "access-review")
+    .attach("file", Buffer.from("%PDF-1.4\\nOwner evidence"), { filename: "owner-proof.pdf", contentType: "application/pdf" });
+  assert.equal(ownerUpload.status, 201);
+  const selfReview = await api(ownerToken).post(`/api/v1/compliance/evidence/${ownerUpload.body.data._id}/review`)
+    .send({ decision: "approved" });
+  assert.equal(selfReview.status, 403);
 });
