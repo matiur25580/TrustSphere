@@ -30,7 +30,6 @@ function refreshAccessToken(): Promise<string | null> {
         const payload = await response.json() as { data?: { accessToken: string } };
         return payload.data?.accessToken ?? null;
       })
-      .catch(() => null)
       .finally(() => { refreshRequest = null; });
   }
   return refreshRequest;
