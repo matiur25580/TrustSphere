@@ -36,6 +36,10 @@ const transitionSchema = z.discriminatedUnion("action", [
 ]);
 
 function reviewer(role: string) { return role === "owner" || role === "admin"; }
+function isDuplicateKeyError(error: unknown): boolean {
+  return typeof error === "object" && error !== null && "code" in error
+    && (error as { code?: unknown }).code === 11000;
+}
 async function event(input: { organizationId: string; findingId: string; actorId: string; action: "created" | "remediation_updated" | "status_changed" | "submitted_for_validation" | "validated" | "accepted"; details?: Record<string, unknown> }) {
   await FindingEvent.create(input);
 }
@@ -86,16 +90,23 @@ findingRouter.post("/from-assessment/:assessmentId", requirePermission("risk:wri
       const question = questionMap.get(response.questionId);
       if (!question) continue;
       const classification = classifyFinding({ answer: response.answer, weight: question.weight });
-      const result = await Finding.updateOne(
-        { organizationId: req.tenant!.organizationId, assessmentId: assessment._id, questionId: response.questionId },
-        { $setOnInsert: {
-          organizationId: req.tenant!.organizationId, vendorId: assessment.vendorId, assessmentId: assessment._id,
-          questionId: response.questionId, title: question.prompt, description: response.comment || `The vendor answered "${response.answer}" to this security control.`,
-          category: question.category, severity: classification.severity, priority: classification.priority, sourceAnswer: response.answer,
-          createdBy: req.auth!.userId, updatedBy: req.auth!.userId, status: "open",
-        } },
-        { upsert: true },
-      );
+      let result;
+      try {
+        result = await Finding.updateOne(
+          { organizationId: req.tenant!.organizationId, assessmentId: assessment._id, questionId: response.questionId },
+          { $setOnInsert: {
+            organizationId: req.tenant!.organizationId, vendorId: assessment.vendorId, assessmentId: assessment._id,
+            questionId: response.questionId, title: question.prompt, description: response.comment || `The vendor answered "${response.answer}" to this security control.`,
+            category: question.category, severity: classification.severity, priority: classification.priority, sourceAnswer: response.answer,
+            createdBy: req.auth!.userId, updatedBy: req.auth!.userId, status: "open",
+          } },
+          { upsert: true },
+        );
+      } catch (error) {
+        // A concurrent generation request may win the unique-index race.
+        if (isDuplicateKeyError(error)) continue;
+        throw error;
+      }
       if (result.upsertedCount) {
         const finding = await Finding.findOne({ organizationId: req.tenant!.organizationId, assessmentId: assessment._id, questionId: response.questionId }).lean();
         if (finding) {
@@ -119,12 +130,21 @@ findingRouter.post("/", requirePermission("risk:write"), async (req, res, next) 
     const response = assessment.responses.find(item => item.questionId === input.questionId);
     if (!response || !["no", "partial"].includes(response.answer)) { res.status(400).json({ error: { code: "NO_CONTROL_GAP", message: "A finding can only be linked to a response of No or Partial." } }); return; }
     const classification = classifyFinding({ answer: response.answer as "no" | "partial", weight: question.weight });
-    const finding = await Finding.create({
-      organizationId: req.tenant!.organizationId, vendorId: assessment.vendorId, assessmentId: assessment._id,
-      questionId: input.questionId, title: input.title, description: input.description, category: question.category,
-      severity: input.severity ?? classification.severity, priority: input.priority ?? classification.priority,
-      sourceAnswer: response.answer, createdBy: req.auth!.userId, updatedBy: req.auth!.userId,
-    });
+    let finding;
+    try {
+      finding = await Finding.create({
+        organizationId: req.tenant!.organizationId, vendorId: assessment.vendorId, assessmentId: assessment._id,
+        questionId: input.questionId, title: input.title, description: input.description, category: question.category,
+        severity: input.severity ?? classification.severity, priority: input.priority ?? classification.priority,
+        sourceAnswer: response.answer, createdBy: req.auth!.userId, updatedBy: req.auth!.userId,
+      });
+    } catch (error) {
+      if (isDuplicateKeyError(error)) {
+        res.status(409).json({ error: { code: "FINDING_ALREADY_EXISTS", message: "A finding already exists for this assessment question. Update the existing finding instead." } });
+        return;
+      }
+      throw error;
+    }
     await event({ organizationId: req.tenant!.organizationId, findingId: String(finding._id), actorId: req.auth!.userId, action: "created", details: { source: "manual", assessmentId: String(assessment._id) } });
     res.status(201).json({ data: finding });
   } catch (error) { next(error); }
