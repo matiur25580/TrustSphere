@@ -5,8 +5,7 @@ import path from "node:path";
 import { Router } from "express";
 import multer from "multer";
 import rateLimit from "express-rate-limit";
-import { Types } from "mongoose";
-import { isValidObjectId } from "mongoose";
+import { isValidObjectId, Types } from "mongoose";
 import { z } from "zod";
 import { authenticate, requirePermission, requireTenant } from "../identity/identity.middleware.js";
 import { ComplianceEvidence, EvidenceEvent } from "./evidence.models.js";
@@ -15,6 +14,9 @@ export const evidenceRouter = Router();
 evidenceRouter.use(authenticate, requireTenant);
 
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
+const SUPPORTED_CONTROL_IDS: string[] = ["access-mfa", "access-review", "security-policy", "risk-assessment", "encryption", "logging-monitoring", "incident-response", "backup-recovery", "supplier-security", "change-management"];
+const REVIEWER_ROLES: string[] = ["owner", "admin"];
+const EVIDENCE_STATUSES: string[] = ["pending_review", "approved", "rejected", "expired"];
 const storageDirectory = path.resolve(process.env.EVIDENCE_STORAGE_DIR || ".trustsphere-private-evidence");
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_FILE_BYTES, files: 1, fields: 4 } });
 const uploadLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHeaders: "draft-7", legacyHeaders: false });
@@ -44,15 +46,16 @@ const reviewSchema = z.object({
 evidenceRouter.post("/", requirePermission("compliance:write"), uploadLimiter, (req, res, next) => {
   upload.single("file")(req, res, async error => {
     if (error) {
+      const message = error instanceof Error ? error.message : "Upload rejected.";
       res.status(error instanceof multer.MulterError && error.code === "LIMIT_FILE_SIZE" ? 413 : 400)
-        .json({ error: { code: "UPLOAD_REJECTED", message: error.message } });
+        .json({ error: { code: "UPLOAD_REJECTED", message } });
       return;
     }
     try {
       const controlId = typeof req.body.controlId === "string" ? req.body.controlId : "";
       const expiresAtRaw = typeof req.body.expiresAt === "string" ? req.body.expiresAt : "";
       const expiresAt = expiresAtRaw ? new Date(expiresAtRaw) : null;
-      if (!["access-mfa", "access-review", "security-policy", "risk-assessment", "encryption", "logging-monitoring", "incident-response", "backup-recovery", "supplier-security", "change-management"].includes(controlId)) {
+      if (!SUPPORTED_CONTROL_IDS.includes(controlId)) {
         res.status(400).json({ error: { code: "INVALID_CONTROL", message: "Choose a valid control from the catalog." } }); return;
       }
       if (expiresAt && Number.isNaN(expiresAt.getTime())) {
@@ -96,7 +99,7 @@ evidenceRouter.get("/", requirePermission("compliance:read"), async (req, res, n
   try {
     const controlId = typeof req.query.controlId === "string" ? req.query.controlId : undefined;
     const status = typeof req.query.status === "string" ? req.query.status : undefined;
-    if (status && !["pending_review", "approved", "rejected", "expired"].includes(status)) {
+    if (status && !EVIDENCE_STATUSES.includes(status)) {
       res.status(400).json({ error: { code: "INVALID_STATUS", message: "Choose a valid evidence status." } }); return;
     }
     const filter: Record<string, unknown> = { organizationId: req.tenant!.organizationId };
@@ -111,7 +114,7 @@ evidenceRouter.get("/", requirePermission("compliance:read"), async (req, res, n
 
 evidenceRouter.post("/:id/review", requirePermission("compliance:write"), async (req, res, next) => {
   try {
-    if (!["owner", "admin"].includes(req.tenant!.role)) {
+    if (!REVIEWER_ROLES.includes(req.tenant!.role)) {
       res.status(403).json({ error: { code: "REVIEWER_REQUIRED", message: "Only owners and admins can review evidence." } }); return;
     }
     if (!isValidObjectId(req.params.id)) {
@@ -143,7 +146,7 @@ evidenceRouter.get("/:id/download", requirePermission("compliance:read"), async 
     if (!isValidObjectId(req.params.id)) { res.status(400).json({ error: { code: "INVALID_EVIDENCE_ID", message: "Evidence identifier is invalid." } }); return; }
     const evidence = await ComplianceEvidence.findOne({ _id: req.params.id, organizationId: req.tenant!.organizationId });
     if (!evidence) { res.status(404).json({ error: { code: "EVIDENCE_NOT_FOUND", message: "Evidence not found." } }); return; }
-    if (evidence.status !== "approved" && String(evidence.uploadedBy) !== req.auth!.userId && !["owner", "admin"].includes(req.tenant!.role)) {
+    if (evidence.status !== "approved" && String(evidence.uploadedBy) !== req.auth!.userId && !REVIEWER_ROLES.includes(req.tenant!.role)) {
       res.status(403).json({ error: { code: "EVIDENCE_NOT_APPROVED", message: "Only the uploader, an organization reviewer, or members with approved evidence access can download this file." } }); return;
     }
     if (evidence.expiresAt && evidence.expiresAt.getTime() <= Date.now() && evidence.status === "approved") {
