@@ -4,6 +4,7 @@ import { mkdir, writeFile, unlink } from "node:fs/promises";
 import path from "node:path";
 import { Router } from "express";
 import multer from "multer";
+import rateLimit from "express-rate-limit";
 import { Types } from "mongoose";
 import { isValidObjectId } from "mongoose";
 import { z } from "zod";
@@ -16,6 +17,7 @@ evidenceRouter.use(authenticate, requireTenant);
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
 const storageDirectory = path.resolve(process.env.EVIDENCE_STORAGE_DIR || ".trustsphere-private-evidence");
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_FILE_BYTES, files: 1, fields: 4 } });
+const uploadLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHeaders: "draft-7", legacyHeaders: false });
 
 function detectMime(buffer: Buffer): "application/pdf" | "image/png" | "image/jpeg" | "text/plain" | null {
   if (buffer.subarray(0, 5).toString("ascii") === "%PDF-") return "application/pdf";
@@ -39,7 +41,7 @@ const reviewSchema = z.object({
   comment: z.string().trim().max(2000).optional(),
 }).strict();
 
-evidenceRouter.post("/", requirePermission("compliance:write"), (req, res, next) => {
+evidenceRouter.post("/", requirePermission("compliance:write"), uploadLimiter, (req, res, next) => {
   upload.single("file")(req, res, async error => {
     if (error) {
       res.status(error instanceof multer.MulterError && error.code === "LIMIT_FILE_SIZE" ? 413 : 400)
@@ -69,6 +71,7 @@ evidenceRouter.post("/", requirePermission("compliance:write"), (req, res, next)
       await mkdir(targetDirectory, { recursive: true, mode: 0o700 });
       const targetPath = path.join(targetDirectory, storageKey);
       await writeFile(targetPath, req.file.buffer, { flag: "wx", mode: 0o600 });
+      let createdEvidenceId: string | null = null;
       try {
         const evidence = await ComplianceEvidence.create({
           organizationId, controlId, uploadedBy: req.auth!.userId,
@@ -76,9 +79,11 @@ evidenceRouter.post("/", requirePermission("compliance:write"), (req, res, next)
           sha256: createHash("sha256").update(req.file.buffer).digest("hex"),
           storageKey, status: "pending_review", expiresAt,
         });
-        await appendEvidenceEvent({ organizationId, evidenceId: String(evidence._id), actorId: req.auth!.userId, action: "uploaded", details: { controlId, sizeBytes: evidence.sizeBytes } });
+        createdEvidenceId = String(evidence._id);
+        await appendEvidenceEvent({ organizationId, evidenceId: createdEvidenceId, actorId: req.auth!.userId, action: "uploaded", details: { controlId, sizeBytes: evidence.sizeBytes } });
         res.status(201).json({ data: evidence });
       } catch (databaseError) {
+        if (createdEvidenceId) await ComplianceEvidence.deleteOne({ _id: createdEvidenceId, organizationId }).catch(() => undefined);
         await unlink(targetPath).catch(() => undefined);
         throw databaseError;
       }
@@ -112,19 +117,20 @@ evidenceRouter.post("/:id/review", requirePermission("compliance:write"), async 
       res.status(400).json({ error: { code: "INVALID_EVIDENCE_ID", message: "Evidence identifier is invalid." } }); return;
     }
     const input = reviewSchema.parse(req.body);
-    const evidence = await ComplianceEvidence.findOne({ _id: req.params.id, organizationId: req.tenant!.organizationId });
-    if (!evidence) { res.status(404).json({ error: { code: "EVIDENCE_NOT_FOUND", message: "Evidence not found." } }); return; }
-    if (evidence.status !== "pending_review") {
+    const existing = await ComplianceEvidence.findOne({ _id: req.params.id, organizationId: req.tenant!.organizationId });
+    if (!existing) { res.status(404).json({ error: { code: "EVIDENCE_NOT_FOUND", message: "Evidence not found." } }); return; }
+    if (existing.status !== "pending_review") {
       res.status(409).json({ error: { code: "EVIDENCE_ALREADY_REVIEWED", message: "Only pending evidence can be reviewed." } }); return;
     }
-    if (String(evidence.uploadedBy) === req.auth!.userId) {
+    if (String(existing.uploadedBy) === req.auth!.userId) {
       res.status(403).json({ error: { code: "SELF_REVIEW_FORBIDDEN", message: "Evidence uploaders cannot review their own evidence." } }); return;
     }
-    evidence.status = input.decision;
-    evidence.reviewedBy = new Types.ObjectId(req.auth!.userId);
-    evidence.reviewedAt = new Date();
-    evidence.reviewComment = input.comment ?? "";
-    await evidence.save();
+    const evidence = await ComplianceEvidence.findOneAndUpdate(
+      { _id: req.params.id, organizationId: req.tenant!.organizationId, status: "pending_review", uploadedBy: { $ne: req.auth!.userId } },
+      { $set: { status: input.decision, reviewedBy: new Types.ObjectId(req.auth!.userId), reviewedAt: new Date(), reviewComment: input.comment ?? "" } },
+      { new: true, runValidators: true },
+    );
+    if (!evidence) { res.status(409).json({ error: { code: "EVIDENCE_ALREADY_REVIEWED", message: "Evidence was already reviewed by another request." } }); return; }
     await appendEvidenceEvent({ organizationId: req.tenant!.organizationId, evidenceId: String(evidence._id), actorId: req.auth!.userId, action: input.decision, details: { comment: input.comment ?? "" } });
     res.json({ data: evidence });
   } catch (error) { next(error); }
