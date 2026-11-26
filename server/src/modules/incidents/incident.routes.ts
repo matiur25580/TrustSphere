@@ -137,9 +137,16 @@ incidentRouter.patch("/:id", requirePermission("security:write"), async (req, re
     };
     const linkError = await validateLinks(req.tenant!.organizationId, linkInput);
     if (linkError) { res.status(400).json({ error: { code: "INVALID_INCIDENT_REFERENCE", message: linkError } }); return; }
-    for (const field of ["title", "summary", "category", "severity", "source", "impact", "rootCause", "containmentPlan", "recoveryPlan", "lessonsLearned"] as const) {
-      if (input[field] !== undefined) incident[field] = input[field] as never;
-    }
+    if (input.title !== undefined) incident.title = input.title;
+    if (input.summary !== undefined) incident.summary = input.summary;
+    if (input.category !== undefined) incident.category = input.category;
+    if (input.severity !== undefined) incident.severity = input.severity;
+    if (input.source !== undefined) incident.source = input.source;
+    if (input.impact !== undefined) incident.impact = input.impact;
+    if (input.rootCause !== undefined) incident.rootCause = input.rootCause;
+    if (input.containmentPlan !== undefined) incident.containmentPlan = input.containmentPlan;
+    if (input.recoveryPlan !== undefined) incident.recoveryPlan = input.recoveryPlan;
+    if (input.lessonsLearned !== undefined) incident.lessonsLearned = input.lessonsLearned;
     if (input.assignedTo !== undefined) incident.assignedTo = input.assignedTo ? new Types.ObjectId(input.assignedTo) : null;
     if (input.detectedAt !== undefined) incident.detectedAt = input.detectedAt ? new Date(input.detectedAt) : null;
     incident.updatedBy = new Types.ObjectId(req.auth!.userId);
