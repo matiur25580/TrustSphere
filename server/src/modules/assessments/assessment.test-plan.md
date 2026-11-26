@@ -20,6 +20,7 @@
 - [ ] Client-supplied organization IDs in request bodies are rejected/ignored; tenant comes only from verified middleware.
 - [ ] Unknown question IDs and invalid answer enums are rejected.
 - [ ] Submission rejects missing required answers.
+- [ ] Submission rejects an assessment where every answer is not applicable (no false zero-risk rating).
 - [ ] Submitted and reviewed assessments cannot be edited or submitted again.
 - [ ] Evidence keys reject absolute paths, traversal, dots, unsupported characters, oversized metadata, and invalid checksums.
 - [ ] Evidence keys outside the active organization namespace are rejected.
