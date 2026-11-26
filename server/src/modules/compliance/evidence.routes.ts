@@ -4,10 +4,10 @@ import { mkdir, writeFile, unlink } from "node:fs/promises";
 import path from "node:path";
 import { Router } from "express";
 import multer from "multer";
+import { Types } from "mongoose";
 import { isValidObjectId } from "mongoose";
 import { z } from "zod";
 import { authenticate, requirePermission, requireTenant } from "../identity/identity.middleware.js";
-import { ControlImplementation } from "./compliance.models.js";
 import { ComplianceEvidence, EvidenceEvent } from "./evidence.models.js";
 
 export const evidenceRouter = Router();
@@ -120,7 +120,7 @@ evidenceRouter.post("/:id/review", requirePermission("compliance:write"), async 
       res.status(403).json({ error: { code: "SELF_REVIEW_FORBIDDEN", message: "Evidence uploaders cannot review their own evidence." } }); return;
     }
     evidence.status = input.decision;
-    evidence.reviewedBy = req.auth!.userId as never;
+    evidence.reviewedBy = new Types.ObjectId(req.auth!.userId);
     evidence.reviewedAt = new Date();
     evidence.reviewComment = input.comment ?? "";
     await evidence.save();
