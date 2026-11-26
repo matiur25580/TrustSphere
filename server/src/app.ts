@@ -31,6 +31,13 @@ export function createApp() {
   });
 
   app.use("/api/v1/health", healthRouter);
+  app.use("/api/v1/auth", rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 20,
+    standardHeaders: "draft-7",
+    legacyHeaders: false,
+    message: { error: { code: "AUTH_RATE_LIMITED", message: "Too many authentication attempts. Please try again later." } },
+  }));
   app.use("/api/v1/auth", identityRouter);
   app.use("/api/v1/tenant", tenantRouter);
   app.use(notFoundHandler);
