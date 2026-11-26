@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { isValidObjectId, Types } from "mongoose";
+import { Types } from "mongoose";
 import { z } from "zod";
 import { authenticate, requirePermission, requireTenant } from "../identity/identity.middleware.js";
 import { ControlEvent, ControlImplementation } from "./compliance.models.js";
