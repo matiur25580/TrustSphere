@@ -179,7 +179,7 @@ evidenceRouter.get("/:id/download", requirePermission("compliance:read"), async 
 evidenceRouter.get("/:id/events", requirePermission("compliance:read"), async (req, res, next) => {
   try {
     if (!isValidObjectId(req.params.id)) { res.status(400).json({ error: { code: "INVALID_EVIDENCE_ID", message: "Evidence identifier is invalid." } }); return; }
-    const evidence = await ComplianceEvidence.findOne({ _id: req.params.id, organizationId: req.tenant!.organizationId }).select("_id").lean();
+    const evidence: any = await ComplianceEvidence.findOne({ _id: req.params.id, organizationId: req.tenant!.organizationId }).select("_id").lean();
     if (!evidence) { res.status(404).json({ error: { code: "EVIDENCE_NOT_FOUND", message: "Evidence not found." } }); return; }
     const events = await EvidenceEvent.find({ organizationId: req.tenant!.organizationId, evidenceId: evidence._id }).sort({ occurredAt: -1 }).limit(50).lean();
     res.json({ data: events });
