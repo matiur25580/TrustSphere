@@ -211,4 +211,19 @@ test("evidence API validates uploads, scopes access and requires independent app
   assert.ok(events.body.data.some((event: { action: string }) => event.action === "uploaded"));
   assert.ok(events.body.data.some((event: { action: string }) => event.action === "approved"));
   assert.equal(await ComplianceEvidence.countDocuments({ organizationId, controlId: "access-mfa" }), 1);
+
+  const expiringUpload = await api(analystToken).post("/api/v1/compliance/evidence")
+    .field("controlId", "access-mfa")
+    .field("expiresAt", new Date(Date.now() - 60_000).toISOString())
+    .attach("file", Buffer.from("old control evidence"), { filename: "expired.txt", contentType: "text/plain" });
+  assert.equal(expiringUpload.status, 201);
+  const expiredId = expiringUpload.body.data._id;
+  const expiryApproval = await api(ownerToken).post(`/api/v1/compliance/evidence/${expiredId}/review`)
+    .send({ decision: "approved" });
+  assert.equal(expiryApproval.status, 200);
+  const evidenceAfterExpiry = await api(ownerToken).get("/api/v1/compliance/evidence?controlId=access-mfa");
+  assert.equal(evidenceAfterExpiry.status, 200);
+  assert.ok(evidenceAfterExpiry.body.data.some((item: { _id: string; status: string }) => item._id === expiredId && item.status === "expired"));
+  const expiredDownload = await api(ownerToken).get(`/api/v1/compliance/evidence/${expiredId}/download`);
+  assert.equal(expiredDownload.status, 410);
 });
