@@ -48,15 +48,15 @@ TrustSphere is a multi-tenant SaaS platform concept for managing third-party ven
 
 ### Install
 
+From the repository root:
+
 ```bash
 npm install
-npm install --prefix server
-npm install --prefix client
 ```
 
 ### Environment
 
-Create `server/.env` based on `server/.env.example`. Never commit real secrets.
+Create `server/.env` from `server/.env.example` and ensure MongoDB is running. Never commit real secrets.
 
 ### Run locally
 
@@ -64,7 +64,9 @@ Create `server/.env` based on `server/.env.example`. Never commit real secrets.
 npm run dev
 ```
 
-The API health endpoint is `GET /api/v1/health`. The frontend runs on the Vite development server.
+The Vite client runs at `http://localhost:5173` and proxies `/api` requests to the Express API at `http://localhost:5000`. The API health endpoint is `GET /api/v1/health`.
+
+The current dashboard is a UI foundation with clearly illustrative sample metrics and vendor rows; those values are not connected to persisted business data yet.
 
 ## Engineering principles
 
