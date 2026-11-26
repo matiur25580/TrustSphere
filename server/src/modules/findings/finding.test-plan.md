@@ -13,4 +13,9 @@
 - Verify the finding creator cannot validate their own remediation.
 - Verify invalid lifecycle transitions are rejected and event history records actor, tenant and transition.
 - Exercise duplicate-key races and concurrent transitions against MongoDB.
+- [x] Verify viewer read access and denied write access with an API integration test.
+- [x] Verify cross-tenant finding reads return not found.
+- [x] Verify repeated assessment generation creates no duplicate records.
+- [x] Verify remediation prerequisites and independent owner validation.
+- [x] Verify activity history includes creation and validation events.
 - Verify event creation and finding mutation failure behavior; add transaction/outbox semantics before claiming atomic auditability.
