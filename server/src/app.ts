@@ -12,6 +12,7 @@ import { assessmentRouter } from "./modules/assessments/assessment.routes.js";
 import { findingRouter } from "./modules/findings/finding.routes.js";
 import { complianceRouter } from "./modules/compliance/compliance.routes.js";
 import { evidenceRouter } from "./modules/compliance/evidence.routes.js";
+import { reportRouter } from "./modules/reports/report.routes.js";
 
 export function createApp() {
   const app = express();
@@ -50,6 +51,7 @@ export function createApp() {
   app.use("/api/v1/findings", findingRouter);
   app.use("/api/v1/compliance", complianceRouter);
   app.use("/api/v1/compliance/evidence", evidenceRouter);
+  app.use("/api/v1/reports", reportRouter);
   app.use(notFoundHandler);
   app.use(errorHandler);
 
