@@ -96,6 +96,14 @@ export function FindingsWorkspace({ accessToken, organizationId, canWrite, canRe
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Workflow transition failed."); }
     finally { setBusy(false); }
   }
+  async function submitForValidation() {
+    const note = window.prompt("Describe the remediation completed:");
+    if (note && note.trim().length >= 5) await transition({ action: "submit_for_validation", resolutionNote: note.trim() });
+  }
+  async function acceptResidualRisk() {
+    const reason = window.prompt("Explain why this residual risk is accepted:");
+    if (reason && reason.trim().length >= 10) await transition({ action: "accept_risk", reason: reason.trim() });
+  }
   const vendorName = (item: Finding) => typeof item.vendorId === "string" ? "Vendor" : item.vendorId?.name ?? "Vendor";
   const priorityLabel = (priority: string) => priority.toUpperCase();
 
@@ -126,11 +134,11 @@ export function FindingsWorkspace({ accessToken, organizationId, canWrite, canRe
           </div>
           <div className="finding-actions">
             {canWrite && selected.status === "open" && <button className="subtle-button" disabled={busy} onClick={() => void transition({ action: "start" })}>Start work</button>}
-            {canWrite && ["open", "in_progress"].includes(selected.status) && <button className="primary-button" disabled={busy} onClick={() => void transition({ action: "submit_for_validation", resolutionNote: window.prompt("Describe the remediation completed:") ?? "" })}>Submit for validation</button>}
+            {canWrite && ["open", "in_progress"].includes(selected.status) && <button className="primary-button" disabled={busy} onClick={() => void submitForValidation()}>Submit for validation</button>}
             {canReview && selected.status === "pending_validation" && <><button className="subtle-button" disabled={busy} onClick={() => void transition({ action: "validate", decision: "reopen", comment: window.prompt("What needs more work?") ?? "" })}>Return to remediation</button><button className="primary-button" disabled={busy} onClick={() => void transition({ action: "validate", decision: "resolved", comment: window.prompt("Validation note (optional):") ?? "" })}><ShieldCheck size={13}/> Validate resolution</button></>}
-            {canReview && !["resolved", "accepted"].includes(selected.status) && <button className="subtle-button" disabled={busy} onClick={() => void transition({ action: "accept_risk", reason: window.prompt("Explain why this residual risk is accepted:") ?? "" })}>Accept residual risk</button>}
+            {canReview && !["resolved", "accepted"].includes(selected.status) && <button className="subtle-button" disabled={busy} onClick={() => void acceptResidualRisk()}>Accept residual risk</button>}
           </div>
-          {selected.events?.length ? <div className="assessment-history"><strong>Finding activity</strong>{selected.events.map(entry => <div key={entry._id}><span className="history-marker"/><span><b>{entry.action.replaceAll("_", " ")}</b><small>{new Date(entry.occurredAt).toLocaleString()}</small></span></div>)}</div> : null}
+          {selected.events?.length ? <div className="assessment-history"><strong>Finding activity</strong>{selected.events.map(entry => <div key={entry._id}><span className="history-marker"/><span><b>{entry.action.replace(/_/g, " ")}</b><small>{new Date(entry.occurredAt).toLocaleString()}</small></span></div>)}</div> : null}
         </>}
       </aside>
     </div>
