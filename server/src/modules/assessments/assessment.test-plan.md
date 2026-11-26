@@ -22,6 +22,7 @@
 - [ ] Submission rejects missing required answers.
 - [ ] Submitted and reviewed assessments cannot be edited or submitted again.
 - [ ] Evidence keys reject absolute paths, traversal, dots, unsupported characters, oversized metadata, and invalid checksums.
+- [ ] Evidence keys outside the active organization namespace are rejected.
 - [ ] Event history has no API mutation route and records actor, action, tenant, and timestamp.
 - [ ] Concurrent submit/review requests do not produce invalid lifecycle transitions.
 - [ ] Duplicate responses for the same question are normalized to one current response.
