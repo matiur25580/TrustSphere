@@ -326,8 +326,8 @@ type AssessmentRecord = {
   reviewerComment?: string;
 };
 type VendorOption = { _id: string; name: string; category: string };
-type AnswerDraft = { answer: AssessmentResponse["answer"]; comment: string; storageKey: string; fileName: string; sha256: string };
-const blankAnswer: AnswerDraft = { answer: "yes", comment: "", storageKey: "", fileName: "", sha256: "" };
+type AnswerDraft = { answer: AssessmentResponse["answer"]; comment: string; storageKey: string; fileName: string; sizeBytes: string; sha256: string };
+const blankAnswer: AnswerDraft = { answer: "yes", comment: "", storageKey: "", fileName: "", sizeBytes: "", sha256: "" };
 
 function AssessmentWorkspace({ accessToken, organizationId, canWrite, canReview }: { accessToken: string; organizationId: string; canWrite: boolean; canReview: boolean }) {
   const [items, setItems] = useState<AssessmentRecord[]>([]);
@@ -384,7 +384,7 @@ function AssessmentWorkspace({ accessToken, organizationId, canWrite, canReview 
         const evidence = answer.evidence?.[0];
         next[answer.questionId] = {
           answer: answer.answer, comment: answer.comment ?? "", storageKey: evidence?.storageKey ?? "",
-          fileName: evidence?.fileName ?? "", sha256: evidence?.sha256 ?? "",
+          fileName: evidence?.fileName ?? "", sizeBytes: evidence?.sizeBytes ? String(evidence.sizeBytes) : "", sha256: evidence?.sha256 ?? "",
         };
       }
       setAnswers(next);
@@ -420,9 +420,10 @@ function AssessmentWorkspace({ accessToken, organizationId, canWrite, canReview 
     try {
       const responses: AssessmentResponse[] = selected.templateSnapshot.questions.map(question => {
         const answer = answers[question.id] ?? blankAnswer;
+        if (answer.storageKey.trim() && (!answer.fileName.trim() || !Number.isInteger(Number(answer.sizeBytes)) || Number(answer.sizeBytes) < 1 || !/^[a-f0-9]{64}$/i.test(answer.sha256.trim()))) throw new Error("Complete the evidence filename, byte size and 64-character SHA-256 checksum, or clear the storage key.");
         const evidence = answer.storageKey.trim() ? [{
-          storageKey: answer.storageKey.trim(), fileName: answer.fileName.trim() || "evidence.pdf",
-          mimeType: "application/pdf" as const, sizeBytes: 1, sha256: answer.sha256.trim(),
+          storageKey: answer.storageKey.trim(), fileName: answer.fileName.trim(),
+          mimeType: "application/pdf" as const, sizeBytes: Number(answer.sizeBytes), sha256: answer.sha256.trim(),
         }] : [];
         return { questionId: question.id, answer: answer.answer, comment: answer.comment, ...(evidence.length ? { evidence } : {}) };
       }).filter(item => Boolean(answers[item.questionId]));
@@ -494,7 +495,7 @@ function AssessmentWorkspace({ accessToken, organizationId, canWrite, canReview 
               <strong>{index+1}. {question.prompt}</strong>
               <select disabled={locked} value={draft.answer} onChange={event => updateAnswer(question.id,{answer:event.target.value as AnswerDraft["answer"]})}><option value="yes">Yes — implemented</option><option value="partial">Partially implemented</option><option value="no">No — not implemented</option><option value="not_applicable">Not applicable</option></select>
               <textarea disabled={locked} rows={2} value={draft.comment} onChange={event => updateAnswer(question.id,{comment:event.target.value})} placeholder="Add context or remediation notes…"/>
-              {!locked && <div className="evidence-reference"><input value={draft.storageKey} onChange={event => updateAnswer(question.id,{storageKey:event.target.value})} placeholder="Private object storage key (optional)"/><input value={draft.fileName} onChange={event => updateAnswer(question.id,{fileName:event.target.value})} placeholder="Evidence filename"/><input value={draft.sha256} onChange={event => updateAnswer(question.id,{sha256:event.target.value})} placeholder="SHA-256 checksum (64 hex characters)"/></div>}
+              {!locked && <div className="evidence-reference"><input value={draft.storageKey} onChange={event => updateAnswer(question.id,{storageKey:event.target.value})} placeholder="Private object storage key (optional)"/><input value={draft.fileName} onChange={event => updateAnswer(question.id,{fileName:event.target.value})} placeholder="Evidence filename"/><input inputMode="numeric" value={draft.sizeBytes} onChange={event => updateAnswer(question.id,{sizeBytes:event.target.value})} placeholder="File size in bytes"/><input value={draft.sha256} onChange={event => updateAnswer(question.id,{sha256:event.target.value})} placeholder="SHA-256 checksum (64 hex characters)"/></div>}
             </article>;
           })}</div>
           {selected.reviewerComment && <p className="reviewer-comment"><strong>Reviewer note:</strong> {selected.reviewerComment}</p>}
