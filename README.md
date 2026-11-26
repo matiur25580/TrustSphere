@@ -23,7 +23,7 @@ TrustSphere is a multi-tenant SaaS platform concept for managing third-party ven
 | Database | MongoDB, Mongoose |
 | Validation | Zod |
 | Security baseline | Helmet, CORS allow-list, rate limiting |
-| Testing | Node.js test runner via tsx (scoring unit tests added) |
+| Testing | Node.js test runner via tsx, scoring unit tests, MongoDB-backed API integration tests |
 | Realtime / jobs | Socket.IO, Redis, BullMQ (later phases) |
 | AI | Provider adapter (Gemini integration planned) |
 
