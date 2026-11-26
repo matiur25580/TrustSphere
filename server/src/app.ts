@@ -6,8 +6,6 @@ import { env } from "./config/env.js";
 import { errorHandler, notFoundHandler } from "./middleware/error-handler.js";
 import { healthRouter } from "./modules/health/health.routes.js";
 import { identityRouter } from "./modules/identity/identity.routes.js";
-import { healthRouter } from "./modules/health/health.routes.js";
-import { identityRouter } from "./modules/identity/identity.routes.js";
 import { tenantRouter } from "./modules/identity/tenant.routes.js";
 import { vendorRouter } from "./modules/vendors/vendor.routes.js";
 
