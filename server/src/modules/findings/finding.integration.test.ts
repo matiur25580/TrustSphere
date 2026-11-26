@@ -184,7 +184,12 @@ test("evidence API validates uploads, scopes access and requires independent app
   const evidenceId = upload.body.data._id;
   assert.equal(upload.body.data.status, "pending_review");
   assert.equal(upload.body.data.fileName, "mfa-proof.pdf");
+  assert.equal(upload.body.data.storageKey, undefined);
   assert.match(upload.body.data.sha256, /^[a-f0-9]{64}$/);
+  const spoofedFile = await api(analystToken).post("/api/v1/compliance/evidence")
+    .field("controlId", "access-mfa")
+    .attach("file", Buffer.from("not really a PDF"), { filename: "spoofed.pdf", contentType: "application/pdf" });
+  assert.equal(spoofedFile.status, 415);
 
   const viewerList = await api(viewerToken).get("/api/v1/compliance/evidence?controlId=access-mfa");
   assert.equal(viewerList.status, 200);
