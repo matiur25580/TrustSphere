@@ -18,6 +18,7 @@ const { User, Organization, Membership } = await import("../identity/identity.mo
 const { Vendor } = await import("../vendors/vendor.models.js");
 const { VendorAssessment } = await import("../assessments/assessment.models.js");
 const { Finding } = await import("./finding.models.js");
+const { Incident, IncidentEvent } = await import("../incidents/incident.models.js");
 const { ControlImplementation } = await import("../compliance/compliance.models.js");
 const { ComplianceEvidence, EvidenceEvent } = await import("../compliance/evidence.models.js");
 
@@ -71,7 +72,7 @@ before(async () => {
     responses: [{ questionId: "iam-01", answer: "no", comment: "Privileged users do not use MFA.", evidence: [], answeredAt: new Date(), answeredBy: analyst._id }],
   });
   assessmentId = String(assessment._id);
-  await Promise.all([User, Organization, Membership, Vendor, VendorAssessment, Finding, ControlImplementation, ComplianceEvidence, EvidenceEvent].map(model => model.init()));
+  await Promise.all([User, Organization, Membership, Vendor, VendorAssessment, Finding, ControlImplementation, ComplianceEvidence, EvidenceEvent, Incident, IncidentEvent].map(model => model.init()));
 });
 
 after(async () => {
@@ -268,4 +269,60 @@ test("reports API returns live tenant analytics, distributions and CSV export", 
 
   const forbidden = await request(app).get("/api/v1/reports/overview");
   assert.equal(forbidden.status, 401);
+});
+
+
+test("incident API enforces tenant scope, RBAC, lifecycle transitions and event history", async () => {
+  const created = await api(analystToken).post("/api/v1/incidents").send({
+    title: "Suspicious privileged access", summary: "A privileged service account showed unusual access from an unrecognized location.",
+    category: "unauthorized_access", severity: "p2", source: "vendor", vendorId, findingId,
+  });
+  assert.equal(created.status, 201);
+  const id = created.body.data._id;
+  assert.equal(created.body.data.status, "reported");
+
+  const viewerRead = await api(viewerToken).get(`/api/v1/incidents/${id}`);
+  assert.equal(viewerRead.status, 200);
+  const viewerWrite = await api(viewerToken).post("/api/v1/incidents").send({
+    title: "Unauthorized incident", summary: "Viewer should not be allowed to create incidents.",
+    category: "other", severity: "p4",
+  });
+  assert.equal(viewerWrite.status, 403);
+
+  const wrongTenant = await api(outsiderToken, otherOrganizationId).get(`/api/v1/incidents/${id}`);
+  assert.equal(wrongTenant.status, 404);
+
+  const triage = await api(analystToken).post(`/api/v1/incidents/${id}/transition`).send({ action: "triage" });
+  assert.equal(triage.status, 200);
+  const investigate = await api(analystToken).post(`/api/v1/incidents/${id}/transition`).send({ action: "investigate" });
+  assert.equal(investigate.status, 200);
+
+  const missingPlan = await api(analystToken).post(`/api/v1/incidents/${id}/transition`).send({ action: "contain" });
+  assert.equal(missingPlan.status, 409);
+  const savePlans = await api(analystToken).patch(`/api/v1/incidents/${id}`).send({
+    containmentPlan: "Disable the compromised account and revoke its active sessions.",
+    recoveryPlan: "Restore approved access after credential rotation and validation.",
+  });
+  assert.equal(savePlans.status, 200);
+  const contain = await api(analystToken).post(`/api/v1/incidents/${id}/transition`).send({ action: "contain" });
+  assert.equal(contain.status, 200);
+  const recover = await api(analystToken).post(`/api/v1/incidents/${id}/transition`).send({ action: "recover" });
+  assert.equal(recover.status, 200);
+  const resolve = await api(analystToken).post(`/api/v1/incidents/${id}/transition`).send({ action: "resolve" });
+  assert.equal(resolve.status, 200);
+  const analystClose = await api(analystToken).post(`/api/v1/incidents/${id}/transition`).send({ action: "close" });
+  assert.equal(analystClose.status, 403);
+  const ownerClose = await api(ownerToken).post(`/api/v1/incidents/${id}/transition`).send({ action: "close" });
+  assert.equal(ownerClose.status, 200);
+  assert.equal(ownerClose.body.data.status, "closed");
+
+  const detail = await api(viewerToken).get(`/api/v1/incidents/${id}`);
+  assert.equal(detail.status, 200);
+  assert.ok(detail.body.data.events.some((item: { action: string }) => item.action === "contained"));
+  assert.ok(detail.body.data.events.some((item: { action: string }) => item.action === "closed"));
+  const summary = await api(viewerToken).get("/api/v1/incidents/summary");
+  assert.equal(summary.status, 200);
+  assert.equal(summary.body.data.total, 1);
+  assert.equal(await Incident.countDocuments({ organizationId }), 1);
+  assert.ok(await IncidentEvent.countDocuments({ organizationId, incidentId: id }) >= 7);
 });
