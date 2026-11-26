@@ -115,7 +115,7 @@ Assessment endpoints require a bearer token, an active tenant membership, and th
 
 The baseline template is version 1. Answers map to risk contributions (yes=0, partial=50, no=100); not-applicable answers are excluded from the weighted denominator. The result is a 0–100 risk score with category breakdown and model identifier `vendor-security-risk-v1`. The assessment score is separate from the vendor directory's inherent-risk heuristic.
 
-Evidence entries are metadata and opaque private-storage keys only. This repository does not upload, serve, or sign evidence files; connect a private object-storage provider and authorization layer before using real documents. Assessment events are append-only through the exposed API, but the event write and assessment update are not yet wrapped in a database transaction or tamper-proof external audit store.
+Assessment questionnaire evidence remains metadata-only. The compliance control workspace now supports a separate private-disk evidence workflow with MIME signature checks, a 25 MB limit, SHA-256 checksums, tenant-scoped authorization, independent owner/admin review, expiry enforcement and authorized downloads. Files are stored outside the public web root with restrictive local filesystem permissions. This is a single-server starter adapter, not durable shared object storage; configure a private S3-compatible provider, malware scanning, backup/retention and key management before production use. Evidence review events are API-level history, not a tamper-proof external audit store.
 
 See [assessment module notes](server/src/modules/assessments/README.md) and [assessment security test plan](server/src/modules/assessments/assessment.test-plan.md).
 
@@ -143,7 +143,19 @@ The starter compliance workspace maps ten shared control statements to selected 
 - `PUT /api/v1/compliance/controls/:controlId` — update implementation status, owner, notes and evidence metadata.
 - `GET /api/v1/compliance/controls/:controlId/events` — recent control implementation activity.
 
-The React workspace supports framework filtering and control implementation updates. Evidence is metadata plus an opaque organization-prefixed storage key; binary upload, private object storage, malware scanning and download authorization are not implemented. The starter crosswalk is an implementation aid, not an official interpretation, audit opinion or certification. See [compliance module notes](server/src/modules/compliance/README.md).
+The React workspace supports framework filtering, control implementation updates, private evidence upload, evidence status tracking, reviewer approval/rejection, expiry visibility and authorized downloads. Evidence is associated with a control and organization; pending evidence is available to its uploader and organization reviewers, while general member downloads require approval. The starter crosswalk is an implementation aid, not an official interpretation, audit opinion or certification. See [compliance module notes](server/src/modules/compliance/README.md).
+
+### Compliance Evidence API
+
+All endpoints require a bearer access token and active tenant membership.
+
+- `POST /api/v1/compliance/evidence` — multipart upload with `file`, `controlId` and optional ISO date `expiresAt`.
+- `GET /api/v1/compliance/evidence?controlId=&status=` — tenant-scoped evidence register (maximum 100 records).
+- `POST /api/v1/compliance/evidence/:id/review` — owner/admin approval or rejection with reviewer comment; uploaders cannot review their own files.
+- `GET /api/v1/compliance/evidence/:id/download` — authorized private download; pending evidence is restricted and expired evidence returns HTTP 410.
+- `GET /api/v1/compliance/evidence/:id/events` — upload, review and download activity history.
+
+Uploads are limited to 25 MB and PDF, PNG, JPEG or UTF-8 text content. The API checks file signatures, generates SHA-256, sanitizes display filenames and stores opaque UUID filenames under an organization-specific private directory. Set `EVIDENCE_STORAGE_DIR` to a persistent directory outside the web root. Local disk is not suitable for multi-instance or ephemeral deployments. Malware scanning, encrypted object storage, backup/retention automation and transactionally tamper-resistant audit storage remain production hardening tasks.
 
 ### Run assessment and findings scoring tests
 
