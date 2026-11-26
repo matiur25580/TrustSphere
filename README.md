@@ -83,7 +83,9 @@ Set a unique `JWT_ACCESS_SECRET` in `server/.env` (at least 32 characters). For 
 
 Passwords are hashed with bcrypt. Refresh tokens are opaque, stored as hashes, rotated with an atomic one-time update, and sent in HttpOnly SameSite cookies. The API includes membership-based tenant context and owner/admin/analyst/viewer permission middleware. See [Identity module notes](server/src/modules/identity/README.md) and the [identity security test plan](server/src/modules/identity/identity.test-plan.md).
 
-**Important:** the identity backend is an initial implementation, not a security certification. Frontend auth screens, automated integration tests, audit logging, invitations, MFA, and production deployment hardening remain future work. Registration currently uses compensating cleanup for partial failures; it is not a multi-document MongoDB transaction.
+The React client now includes login and organization registration screens, in-memory access-token handling, refresh-cookie session restoration, a protected dashboard view, sign-out, organization switching, and a live tenant-context check. The access token is deliberately not persisted in localStorage; the browser uses the HttpOnly refresh cookie to restore sessions.
+
+**Important:** this is an initial portfolio implementation, not a security certification. Automated integration tests, audit logging, invitations, MFA, and production deployment hardening remain future work. Registration currently uses compensating cleanup for partial failures; it is not a multi-document MongoDB transaction. The dashboard's vendor and compliance metrics remain illustrative sample data.
 
 ## Engineering principles
 
