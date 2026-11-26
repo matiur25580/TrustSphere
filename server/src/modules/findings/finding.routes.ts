@@ -127,7 +127,7 @@ findingRouter.post("/", requirePermission("risk:write"), async (req, res, next) 
     if (!["submitted", "approved", "rejected"].includes(assessment.status)) { res.status(409).json({ error: { code: "ASSESSMENT_NOT_SUBMITTED", message: "Submit the assessment before creating a finding." } }); return; }
     const question = (assessment.templateSnapshot as { questions: Array<{ id: string; category: string; weight: number }> }).questions.find(item => item.id === input.questionId);
     if (!question) { res.status(400).json({ error: { code: "UNKNOWN_QUESTION", message: "Question does not belong to this assessment template." } }); return; }
-    const response = assessment.responses.find(item => item.questionId === input.questionId);
+    const response = assessment.responses.find((item: { questionId: string; answer: string }) => item.questionId === input.questionId);
     if (!response || !["no", "partial"].includes(response.answer)) { res.status(400).json({ error: { code: "NO_CONTROL_GAP", message: "A finding can only be linked to a response of No or Partial." } }); return; }
     const classification = classifyFinding({ answer: response.answer as "no" | "partial", weight: question.weight });
     let finding;
