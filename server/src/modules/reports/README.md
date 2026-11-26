@@ -18,7 +18,7 @@ Supported ranges are `7d`, `30d` and `90d`; omitted or unsupported values defaul
 - Assessment risk distribution uses the assessment's stored scored risk band; unscored assessments are omitted from that distribution.
 - Open findings include `open`, `in_progress` and `pending_validation`; overdue means one of those statuses with a due date earlier than report generation.
 - Compliance coverage is a current snapshot using the ten-control starter catalog. `not_applicable` controls are excluded from the denominator; only `implemented` controls count as covered.
-- Evidence lifecycle is a current snapshot. Evidence whose expiry date has passed is counted as expired even if its stored status has not yet been lazily updated by the evidence API.
+- Evidence lifecycle is a current snapshot. Approved or pending evidence whose expiry date has passed is counted as expired even if its stored status has not yet been lazily updated by the evidence API; rejected evidence remains classified as rejected.
 - Attention queues are current operational queues (not restricted to the selected creation window) and are bounded to the six oldest overdue findings and five oldest items in each review queue.
 
 ## Security and limitations
