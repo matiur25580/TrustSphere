@@ -4,7 +4,7 @@
 
 TrustSphere is a multi-tenant SaaS platform concept for managing third-party vendors, assessing operational and cybersecurity risks, organizing compliance evidence, and coordinating remediation workflows.
 
-> **Project status:** Foundation in progress. This repository is being built incrementally. Features are documented as planned until implemented and tested.
+> **Project status:** Identity, tenant context, and the first vendor-management slice are implemented in the repository. Runtime/build verification and automated security tests are still pending; this is not a production-certified system.
 
 ## Product goals
 
@@ -66,7 +66,7 @@ npm run dev
 
 The Vite client runs at `http://localhost:5173` and proxies `/api` requests to the Express API at `http://localhost:5000`. The API health endpoint is `GET /api/v1/health`.
 
-The current dashboard is a UI foundation with clearly illustrative sample metrics and vendor rows; those values are not connected to persisted business data yet.
+The dashboard combines illustrative portfolio analytics with a live, tenant-scoped vendor directory. Vendor records are persisted in MongoDB; the headline analytics and risk-distribution visualization remain illustrative sample data.
 
 ### Authentication configuration
 
@@ -83,9 +83,22 @@ Set a unique `JWT_ACCESS_SECRET` in `server/.env` (at least 32 characters). For 
 
 Passwords are hashed with bcrypt. Refresh tokens are opaque, stored as hashes, rotated with an atomic one-time update, and sent in HttpOnly SameSite cookies. The API includes membership-based tenant context and owner/admin/analyst/viewer permission middleware. See [Identity module notes](server/src/modules/identity/README.md) and the [identity security test plan](server/src/modules/identity/identity.test-plan.md).
 
-The React client now includes login and organization registration screens, in-memory access-token handling, refresh-cookie session restoration, a protected dashboard view, sign-out, organization switching, and a live tenant-context check. The access token is deliberately not persisted in localStorage; the browser uses the HttpOnly refresh cookie to restore sessions.
+The React client includes login and organization registration screens, in-memory access-token handling, refresh-cookie session restoration, a protected dashboard view, sign-out, organization switching, and a live tenant-context check. The authenticated dashboard includes a vendor directory with create/edit/archive actions, search, status and risk filters, and server pagination. The access token is deliberately not persisted in localStorage; the browser uses the HttpOnly refresh cookie to restore sessions.
 
-**Important:** this is an initial portfolio implementation, not a security certification. Automated integration tests, audit logging, invitations, MFA, and production deployment hardening remain future work. Registration currently uses compensating cleanup for partial failures; it is not a multi-document MongoDB transaction. The dashboard's vendor and compliance metrics remain illustrative sample data.
+**Important:** this is an evolving portfolio implementation, not a security certification. Automated integration tests, audit-event persistence, invitations, MFA, assessment workflows, and production deployment hardening remain future work. Registration currently uses compensating cleanup for partial failures; it is not a multi-document MongoDB transaction. Dashboard analytics remain illustrative sample data, while the vendor directory reads and writes persisted records.
+
+### Vendor Management API
+
+All vendor routes require a bearer access token and an `x-organization-id` header. The API verifies active membership before accessing vendor data and applies role permissions (`vendors:read` / `vendors:write`).
+
+- `GET /api/v1/vendors/summary` — tenant-scoped portfolio counts.
+- `GET /api/v1/vendors?page=1&limit=10&search=&status=&riskBand=` — filtered and paginated directory (maximum page size 50).
+- `POST /api/v1/vendors` — create a vendor.
+- `GET /api/v1/vendors/:id` — read one vendor.
+- `PATCH /api/v1/vendors/:id` — update profile and recalculate risk.
+- `DELETE /api/v1/vendors/:id` — soft archive.
+
+Risk score v1 is a deterministic heuristic based on criticality, data sensitivity, and system access. It is not a completed assessment or regulatory rating. See [Vendor module notes](server/src/modules/vendors/README.md) and [vendor security test plan](server/src/modules/vendors/vendor.test-plan.md).
 
 ## Engineering principles
 
