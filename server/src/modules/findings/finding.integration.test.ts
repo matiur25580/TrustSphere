@@ -3,12 +3,14 @@ import assert from "node:assert/strict";
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import request from "supertest";
+import { rm } from "node:fs/promises";
 import { MongoMemoryServer } from "mongodb-memory-server";
 
 process.env.NODE_ENV = "test";
 process.env.MONGODB_URI = "mongodb://127.0.0.1:27017/trustsphere-test";
 process.env.JWT_ACCESS_SECRET = "trustsphere-integration-test-secret-at-least-32-characters";
 process.env.CLIENT_ORIGIN = "http://localhost:5173";
+process.env.EVIDENCE_STORAGE_DIR = ".trustsphere-test-evidence";
 
 const { createApp } = await import("../../app.js");
 const { createAccessToken } = await import("../identity/identity.security.js");
@@ -17,6 +19,7 @@ const { Vendor } = await import("../vendors/vendor.models.js");
 const { VendorAssessment } = await import("../assessments/assessment.models.js");
 const { Finding } = await import("./finding.models.js");
 const { ControlImplementation } = await import("../compliance/compliance.models.js");
+const { ComplianceEvidence, EvidenceEvent } = await import("../compliance/evidence.models.js");
 
 const database = await MongoMemoryServer.create();
 const app = createApp();
@@ -68,12 +71,13 @@ before(async () => {
     responses: [{ questionId: "iam-01", answer: "no", comment: "Privileged users do not use MFA.", evidence: [], answeredAt: new Date(), answeredBy: analyst._id }],
   });
   assessmentId = String(assessment._id);
-  await Promise.all([User, Organization, Membership, Vendor, VendorAssessment, Finding, ControlImplementation].map(model => model.init()));
+  await Promise.all([User, Organization, Membership, Vendor, VendorAssessment, Finding, ControlImplementation, ComplianceEvidence, EvidenceEvent].map(model => model.init()));
 });
 
 after(async () => {
   await mongoose.disconnect();
   await database.stop();
+  await rm(".trustsphere-test-evidence", { recursive: true, force: true });
 });
 
 function api(token: string, tenant = organizationId) {
@@ -169,4 +173,42 @@ test("findings API enforces tenant boundaries, RBAC, idempotency and independent
   assert.equal(otherTenantControls.status, 200);
   assert.equal(otherTenantControls.body.data[0].implementation.status, "not_started");
   assert.equal(await ControlImplementation.countDocuments({ organizationId }), 1);
+});
+
+test("evidence API validates uploads, scopes access and requires independent approval", async () => {
+  const upload = await api(analystToken).post("/api/v1/compliance/evidence")
+    .field("controlId", "access-mfa")
+    .field("expiresAt", new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString())
+    .attach("file", Buffer.from("%PDF-1.7\\nTrustSphere MFA evidence"), { filename: "../../mfa-proof.pdf", contentType: "application/pdf" });
+  assert.equal(upload.status, 201);
+  const evidenceId = upload.body.data._id;
+  assert.equal(upload.body.data.status, "pending_review");
+  assert.equal(upload.body.data.fileName, "mfa-proof.pdf");
+  assert.match(upload.body.data.sha256, /^[a-f0-9]{64}$/);
+
+  const viewerList = await api(viewerToken).get("/api/v1/compliance/evidence?controlId=access-mfa");
+  assert.equal(viewerList.status, 200);
+  assert.equal(viewerList.body.data.length, 1);
+  assert.equal(viewerList.body.data[0].storageKey, undefined);
+  const viewerPendingDownload = await api(viewerToken).get(`/api/v1/compliance/evidence/${evidenceId}/download`);
+  assert.equal(viewerPendingDownload.status, 403);
+
+  const outsiderList = await api(outsiderToken, otherOrganizationId).get("/api/v1/compliance/evidence");
+  assert.equal(outsiderList.status, 200);
+  assert.equal(outsiderList.body.data.length, 0);
+  const outsiderDownload = await api(outsiderToken, otherOrganizationId).get(`/api/v1/compliance/evidence/${evidenceId}/download`);
+  assert.equal(outsiderDownload.status, 404);
+
+  const approved = await api(ownerToken).post(`/api/v1/compliance/evidence/${evidenceId}/review`)
+    .send({ decision: "approved", comment: "Reviewed against the control objective." });
+  assert.equal(approved.status, 200);
+  assert.equal(approved.body.data.status, "approved");
+  const viewerDownload = await api(viewerToken).get(`/api/v1/compliance/evidence/${evidenceId}/download`);
+  assert.equal(viewerDownload.status, 200);
+  assert.equal(viewerDownload.headers["content-type"], "application/pdf");
+  const events = await api(ownerToken).get(`/api/v1/compliance/evidence/${evidenceId}/events`);
+  assert.equal(events.status, 200);
+  assert.ok(events.body.data.some((event: { action: string }) => event.action === "uploaded"));
+  assert.ok(events.body.data.some((event: { action: string }) => event.action === "approved"));
+  assert.equal(await ComplianceEvidence.countDocuments({ organizationId, controlId: "access-mfa" }), 1);
 });
