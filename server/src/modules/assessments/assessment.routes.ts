@@ -128,10 +128,11 @@ assessmentRouter.put("/:id/responses", requirePermission("risk:write"), async (r
     if (!["draft", "in_progress"].includes(assessment.status)) { res.status(409).json({ error: { code: "ASSESSMENT_LOCKED", message: "Submitted assessments cannot be edited." } }); return; }
     const questionIds = new Set((assessment.templateSnapshot as typeof template).questions.map(question => question.id));
     if (input.responses.some(response => !questionIds.has(response.questionId))) { res.status(400).json({ error: { code: "UNKNOWN_QUESTION", message: "A response references a question outside this template version." } }); return; }
-    const responseMap = new Map<string, Record<string, unknown>>();
-    for (const response of assessment.responses) responseMap.set(response.questionId, response.toObject());
-    for (const response of input.responses) responseMap.set(response.questionId, { ...response, answeredAt: new Date(), answeredBy: new Types.ObjectId(req.auth!.userId) });
-    assessment.responses = [...responseMap.values()] as typeof assessment.responses;
+    type StoredResponse = (typeof assessment.responses)[number];
+    const responseMap = new Map<string, StoredResponse>();
+    for (const response of assessment.responses) responseMap.set(response.questionId, response);
+    for (const response of input.responses) responseMap.set(response.questionId, { ...response, answeredAt: new Date(), answeredBy: new Types.ObjectId(req.auth!.userId) } as unknown as StoredResponse);
+    assessment.responses = [...responseMap.values()];
     assessment.status = "in_progress";
     await assessment.save();
     await appendEvent({ organizationId: req.tenant!.organizationId, assessmentId: String(assessment._id), actorId: req.auth!.userId, action: "responses_saved", details: { responseCount: input.responses.length } });
