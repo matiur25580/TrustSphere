@@ -21,7 +21,7 @@ Supported ranges are `7d`, `30d` and `90d`; omitted or unsupported values defaul
 - Evidence lifecycle is a current snapshot. Approved or pending evidence whose expiry date has passed is counted as expired even if its stored status has not yet been lazily updated by the evidence API; rejected evidence remains classified as rejected.
 - Attention queues are current operational queues (not restricted to the selected creation window) and are bounded to the six oldest overdue findings and five oldest items in each review queue.
 
-## Security and limitations
+See the [reporting API test plan](report.test-plan.md) for automated coverage and outstanding verification tasks.\n\n## Security and limitations
 
 All database aggregations and attention queries include the organization identifier obtained from membership middleware; no organization ID is accepted from query or body parameters. The module is read-only and is available to owner, admin, analyst and viewer roles through the existing `reports:read` permission.
 
