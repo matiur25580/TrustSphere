@@ -66,7 +66,7 @@ npm run dev
 
 The Vite client runs at `http://localhost:5173` and proxies `/api` requests to the Express API at `http://localhost:5000`. The API health endpoint is `GET /api/v1/health`.
 
-The dashboard combines illustrative portfolio analytics with a live, tenant-scoped vendor directory. Vendor records are persisted in MongoDB; the headline analytics and risk-distribution visualization remain illustrative sample data.
+The dashboard includes a tenant-scoped vendor directory, assessment and remediation workspaces, compliance evidence management, and live portfolio reporting. Executive metrics, risk distributions, activity trends and attention queues are aggregated from MongoDB for the selected organization. CSV export is available, and the report view can be printed or saved as PDF from the browser print dialog.
 
 ### Authentication configuration
 
@@ -85,7 +85,7 @@ Passwords are hashed with bcrypt. Refresh tokens are opaque, stored as hashes, r
 
 The React client includes login and organization registration screens, in-memory access-token handling, refresh-cookie session restoration, a protected dashboard view, sign-out, organization switching, and a live tenant-context check. The authenticated dashboard includes a vendor directory, assessment workspace, and findings/remediation workspace with versioned baseline questionnaires, answer capture, evidence references, risk breakdowns, remediation ownership, due dates, and independent owner/admin validation. The access token is deliberately not persisted in localStorage; the browser uses the HttpOnly refresh cookie to restore sessions.
 
-**Important:** this is an evolving portfolio implementation, not a security certification. Automated API/security integration tests, audit-event tamper resistance, invitations, MFA, configurable template authoring, private object-storage integration, and production deployment hardening remain future work. Registration currently uses compensating cleanup for partial failures; it is not a multi-document MongoDB transaction. Dashboard analytics remain illustrative sample data, while the vendor directory reads and writes persisted records.
+**Important:** this is an evolving portfolio implementation, not a security certification. Automated API/security integration tests, audit-event tamper resistance, invitations, MFA, configurable template authoring, private object-storage integration, and production deployment hardening remain future work. Registration currently uses compensating cleanup for partial failures; it is not a multi-document MongoDB transaction. The reporting workspace reads persisted organization data. Date-range filters apply to newly created vendors, assessments and findings; compliance implementation and evidence lifecycle cards show current organization status.
 
 ### Vendor Management API
 
@@ -156,6 +156,17 @@ All endpoints require a bearer access token and active tenant membership.
 - `GET /api/v1/compliance/evidence/:id/events` — upload, review and download activity history.
 
 Uploads are limited to 25 MB and PDF, PNG, JPEG or UTF-8 text content. The API checks file signatures, generates SHA-256, sanitizes display filenames and stores opaque UUID filenames under an organization-specific private directory. Set `EVIDENCE_STORAGE_DIR` to a persistent directory outside the web root. Local disk is not suitable for multi-instance or ephemeral deployments. Malware scanning, encrypted object storage, backup/retention automation and transactionally tamper-resistant audit storage remain production hardening tasks.
+
+### Enterprise Reporting & Risk Intelligence
+
+All reporting endpoints require an authenticated active tenant and the `reports:read` permission.
+
+- `GET /api/v1/reports/overview?range=7d|30d|90d` — tenant-scoped executive summary, risk distributions, daily activity trend and operational attention queues.
+- `GET /api/v1/reports/export.csv?range=7d|30d|90d` — CSV export of summary metrics, distributions and daily trend.
+
+The reporting workspace includes vendor risk bands, assessment risk bands, finding severity and lifecycle, compliance implementation coverage, evidence lifecycle, overdue remediation, assessments awaiting review and evidence awaiting review. The selected date range filters vendor, assessment and finding creation activity; compliance and evidence status are current snapshots. The print-optimized report can be saved as PDF using the browser print dialog.
+
+Risk scores and starter framework mappings are decision-support indicators, not certifications, audit opinions or regulatory determinations. The dashboard and report endpoints are tenant-scoped; all analytics are aggregated using the active organization identifier resolved by membership middleware.
 
 ### Run assessment and findings scoring tests
 
