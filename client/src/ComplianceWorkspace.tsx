@@ -7,10 +7,11 @@ type Control = {
   mappings: { framework: string; reference: string }[];
   implementation: { status: "not_started" | "in_progress" | "implemented" | "not_applicable"; owner: string; notes: string; evidence: unknown[] };
 };
+type Evidence = { _id: string; controlId: string; fileName: string; mimeType: string; sizeBytes: number; sha256: string; status: "pending_review" | "approved" | "rejected" | "expired"; expiresAt?: string | null; reviewComment?: string };
 type Summary = { total: number; not_started: number; in_progress: number; implemented: number; not_applicable: number; coveragePercent: number; mappedFrameworks: number };
 const labels = { not_started: "Not started", in_progress: "In progress", implemented: "Implemented", not_applicable: "Not applicable" };
 
-export function ComplianceWorkspace({ accessToken, organizationId, canWrite }: { accessToken: string; organizationId: string; canWrite: boolean }) {
+export function ComplianceWorkspace({ accessToken, organizationId, canWrite, canReview }: { accessToken: string; organizationId: string; canWrite: boolean; canReview: boolean }) {
   const [controls, setControls] = useState<Control[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [framework, setFramework] = useState("all");
@@ -20,6 +21,10 @@ export function ComplianceWorkspace({ accessToken, organizationId, canWrite }: {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [evidence, setEvidence] = useState<Evidence[]>([]);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [expiresAt, setExpiresAt] = useState("");
+  const [uploading, setUploading] = useState(false);
 
   async function load() {
     setLoading(true); setError("");
@@ -44,6 +49,18 @@ export function ComplianceWorkspace({ accessToken, organizationId, canWrite }: {
 
   useEffect(() => { void load(); }, [accessToken, organizationId, framework]);
 
+  useEffect(() => {
+    if (!selected) { setEvidence([]); return; }
+    let active = true;
+    fetch(`/api/v1/compliance/evidence?controlId=${encodeURIComponent(selected)}`, {
+      headers: { Authorization: `Bearer ${accessToken}`, "x-organization-id": organizationId },
+    }).then(response => response.json().then(payload => ({ response, payload }))).then(({ response, payload }) => {
+      if (!response.ok) throw new Error(payload.error?.message || "Unable to load evidence.");
+      if (active) setEvidence(payload.data ?? []);
+    }).catch(cause => { if (active) setError(cause instanceof Error ? cause.message : "Unable to load evidence."); });
+    return () => { active = false; };
+  }, [selected, accessToken, organizationId]);
+
   function choose(control: Control) {
     setSelected(control.id);
     setDraft({ status: control.implementation.status, owner: control.implementation.owner || "", notes: control.implementation.notes || "" });
@@ -65,6 +82,51 @@ export function ComplianceWorkspace({ accessToken, organizationId, canWrite }: {
       await load();
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Unable to save control implementation."); }
     finally { setSaving(false); }
+  }
+
+  async function uploadEvidence() {
+    if (!selected || !selectedFile || !canWrite) return;
+    setUploading(true); setError(""); setNotice("");
+    try {
+      const body = new FormData();
+      body.append("file", selectedFile);
+      body.append("controlId", selected);
+      if (expiresAt) body.append("expiresAt", new Date(expiresAt).toISOString());
+      const response = await fetch("/api/v1/compliance/evidence", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}`, "x-organization-id": organizationId },
+        body,
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error?.message || "Evidence upload failed.");
+      setSelectedFile(null); setExpiresAt(""); setNotice("Evidence uploaded and queued for independent review.");
+      const refreshed = await fetch(`/api/v1/compliance/evidence?controlId=${encodeURIComponent(selected)}`, { headers: { Authorization: `Bearer ${accessToken}`, "x-organization-id": organizationId } });
+      const result = await refreshed.json(); if (refreshed.ok) setEvidence(result.data ?? []);
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Evidence upload failed."); }
+    finally { setUploading(false); }
+  }
+
+  async function reviewEvidence(item: Evidence, decision: "approved" | "rejected") {
+    const comment = window.prompt(`Optional reviewer comment for ${decision}:`) ?? "";
+    try {
+      const response = await fetch(`/api/v1/compliance/evidence/${item._id}/review`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}`, "x-organization-id": organizationId, "Content-Type": "application/json" },
+        body: JSON.stringify({ decision, comment }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error?.message || "Evidence review failed.");
+      setEvidence(items => items.map(entry => entry._id === item._id ? payload.data : entry));
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Evidence review failed."); }
+  }
+
+  async function downloadEvidence(item: Evidence) {
+    try {
+      const response = await fetch(`/api/v1/compliance/evidence/${item._id}/download`, { headers: { Authorization: `Bearer ${accessToken}`, "x-organization-id": organizationId } });
+      if (!response.ok) { const payload = await response.json(); throw new Error(payload.error?.message || "Download failed."); }
+      const objectUrl = URL.createObjectURL(await response.blob());
+      const link = document.createElement("a"); link.href = objectUrl; link.download = item.fileName; link.click(); URL.revokeObjectURL(objectUrl);
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Download failed."); }
   }
 
   const current = controls.find(item => item.id === selected);
@@ -92,6 +154,24 @@ export function ComplianceWorkspace({ accessToken, organizationId, canWrite }: {
         <label>Control owner<input disabled={!canWrite} maxLength={120} value={draft.owner} onChange={event => setDraft(value => ({ ...value, owner: event.target.value }))} placeholder="Team or accountable owner"/></label>
         <label>Implementation notes<textarea disabled={!canWrite} rows={4} maxLength={3000} value={draft.notes} onChange={event => setDraft(value => ({ ...value, notes: event.target.value }))} placeholder="Describe the implementation, operating cadence and known gaps..."/></label>
         {canWrite && <button className="primary-button" disabled={saving} onClick={() => void save()}><Save size={15}/>{saving ? "Saving..." : "Save implementation"}</button>}
+        <div className="evidence-panel">
+          <div><h4>Evidence & review</h4><p>Files are private and require independent review before general member access.</p></div>
+          {canWrite && <div className="evidence-upload">
+            <label>Choose evidence file<input type="file" accept=".pdf,.png,.jpg,.jpeg,.txt,application/pdf,image/png,image/jpeg,text/plain" onChange={event => setSelectedFile(event.target.files?.[0] ?? null)}/></label>
+            <label>Expiry date (optional)<input type="date" value={expiresAt} onChange={event => setExpiresAt(event.target.value)}/></label>
+            <button className="primary-button" disabled={!selectedFile || uploading} onClick={() => void uploadEvidence()}>{uploading ? "Uploading..." : "Upload for review"}</button>
+          </div>}
+          <div className="evidence-list">
+            {evidence.length === 0 ? <p>No evidence attached to this control yet.</p> : evidence.map(item => <article key={item._id}>
+              <div><strong>{item.fileName}</strong><small>{(item.sizeBytes / 1024).toFixed(1)} KB · {item.mimeType} · {item.expiresAt ? `Expires ${new Date(item.expiresAt).toLocaleDateString()}` : "No expiry date"}</small></div>
+              <span className={`evidence-state ${item.status}`}>{item.status.replace("_", " ")}</span>
+              {item.status === "approved" && <button type="button" className="subtle-button" onClick={() => void downloadEvidence(item)}>Download</button>}
+              {canReview && item.status === "pending_review" && <><button type="button" className="subtle-button" onClick={() => void reviewEvidence(item, "approved")}>Approve</button><button type="button" className="subtle-button" onClick={() => void reviewEvidence(item, "rejected")}>Reject</button></>}
+              {item.reviewComment && <small className="evidence-review-comment">Reviewer: {item.reviewComment}</small>}
+            </article>)}
+          </div>
+        </div>
+
         {!canWrite && <p className="compliance-readonly"><CircleDashed size={14}/> Read-only access for this workspace role.</p>}
       </div>}
     </div>}
