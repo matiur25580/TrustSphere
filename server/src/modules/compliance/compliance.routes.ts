@@ -55,6 +55,7 @@ complianceRouter.get("/summary", requirePermission("compliance:read"), async (re
     const counts = { not_started: 0, in_progress: 0, implemented: 0, not_applicable: 0 };
     for (const row of rows) counts[row._id as keyof typeof counts] = row.count;
     const total = controls.length;
+    counts.not_started = Math.max(0, total - counts.in_progress - counts.implemented - counts.not_applicable);
     const applicable = total - counts.not_applicable;
     res.json({ data: { total, ...counts, coveragePercent: applicable ? Math.round(counts.implemented / applicable * 100) : 0, mappedFrameworks: 2 } });
   } catch (error) { next(error); }
