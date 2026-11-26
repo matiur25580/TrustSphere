@@ -281,6 +281,11 @@ test("incident API enforces tenant scope, RBAC, lifecycle transitions and event 
   const id = created.body.data._id;
   assert.equal(created.body.data.status, "reported");
 
+  const members = await api(viewerToken).get("/api/v1/incidents/members");
+  assert.equal(members.status, 200);
+  assert.equal(members.body.data.length, 3);
+  assert.ok(members.body.data.every((member: { id: string; name: string; email: string }) => member.id && member.name && member.email));
+
   const viewerRead = await api(viewerToken).get(`/api/v1/incidents/${id}`);
   assert.equal(viewerRead.status, 200);
   const viewerWrite = await api(viewerToken).post("/api/v1/incidents").send({
