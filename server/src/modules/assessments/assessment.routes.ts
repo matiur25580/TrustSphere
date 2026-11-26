@@ -128,7 +128,8 @@ assessmentRouter.put("/:id/responses", requirePermission("risk:write"), async (r
     if (!["draft", "in_progress"].includes(assessment.status)) { res.status(409).json({ error: { code: "ASSESSMENT_LOCKED", message: "Submitted assessments cannot be edited." } }); return; }
     const questionIds = new Set((assessment.templateSnapshot as typeof template).questions.map(question => question.id));
     if (input.responses.some(response => !questionIds.has(response.questionId))) { res.status(400).json({ error: { code: "UNKNOWN_QUESTION", message: "A response references a question outside this template version." } }); return; }
-    const responseMap = new Map(assessment.responses.map(response => [response.questionId, response.toObject()]));
+    const responseMap = new Map<string, Record<string, unknown>>();
+    for (const response of assessment.responses) responseMap.set(response.questionId, response.toObject());
     for (const response of input.responses) responseMap.set(response.questionId, { ...response, answeredAt: new Date(), answeredBy: new Types.ObjectId(req.auth!.userId) });
     assessment.responses = [...responseMap.values()] as typeof assessment.responses;
     assessment.status = "in_progress";
@@ -145,7 +146,8 @@ assessmentRouter.post("/:id/submit", requirePermission("risk:write"), async (req
     if (!assessment) { res.status(404).json({ error: { code: "ASSESSMENT_NOT_FOUND", message: "Assessment not found." } }); return; }
     if (!["draft", "in_progress"].includes(assessment.status)) { res.status(409).json({ error: { code: "ASSESSMENT_LOCKED", message: "This assessment has already been submitted." } }); return; }
     const snapshot = assessment.templateSnapshot as typeof template;
-    const responseMap = new Map(assessment.responses.map(response => [response.questionId, response.answer]));
+    const responseMap = new Map<string, string>();
+    for (const response of assessment.responses) responseMap.set(response.questionId, response.answer);
     const missing = snapshot.questions.filter(question => question.required && !responseMap.has(question.id));
     if (missing.length) { res.status(400).json({ error: { code: "REQUIRED_RESPONSES_MISSING", message: "Complete every required question before submitting.", details: { missingQuestionIds: missing.map(question => question.id) } } }); return; }
     const scoreableResponses = assessment.responses.filter(response => response.answer !== "not_applicable");
