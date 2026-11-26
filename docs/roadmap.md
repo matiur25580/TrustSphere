@@ -34,8 +34,9 @@ Status is intentionally conservative: unchecked implementation items have not ye
 
 ## Milestone 4 — Compliance and evidence
 - [x] Starter framework and control library (SOC 2 / ISO 27001:2022 crosswalk; formal interpretation excluded)
-- [x] Tenant-scoped evidence metadata references (private binary storage pending)
-- [ ] Control-to-evidence mapping and evidence review
+- [x] Tenant-scoped private evidence uploads and control association (local disk adapter; shared object storage pending)
+- [x] Independent evidence approval/rejection, reviewer comments and activity history (runtime verification pending)
+- [x] Evidence expiry tracking and authorized download (malware scanning and lifecycle cleanup pending)
 - [x] Control implementation gap status and API-level change history (runtime verification pending)
 
 ## Milestone 5 — Operations
