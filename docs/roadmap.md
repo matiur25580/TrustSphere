@@ -33,10 +33,10 @@ Status is intentionally conservative: unchecked implementation items have not ye
 - [x] Append-only assessment event history at API level (tamper resistance and transaction boundary pending)
 
 ## Milestone 4 — Compliance and evidence
-- [ ] Framework and control library
-- [ ] Evidence metadata and private file storage
-- [ ] Control-to-evidence mapping
-- [ ] Gap tracking and review history
+- [x] Starter framework and control library (SOC 2 / ISO 27001:2022 crosswalk; formal interpretation excluded)
+- [x] Tenant-scoped evidence metadata references (private binary storage pending)
+- [ ] Control-to-evidence mapping and evidence review
+- [x] Control implementation gap status and API-level change history (runtime verification pending)
 
 ## Milestone 5 — Operations
 - [ ] Remediation plans and tasks
