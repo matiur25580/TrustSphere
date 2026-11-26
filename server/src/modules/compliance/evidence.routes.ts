@@ -152,8 +152,8 @@ evidenceRouter.get("/:id/download", requirePermission("compliance:read"), async 
       if (!res.headersSent) res.status(404).json({ error: { code: "EVIDENCE_FILE_MISSING", message: "The stored evidence file is unavailable." } });
       else res.destroy(error);
     });
-    stream.pipe(res);
     await appendEvidenceEvent({ organizationId: req.tenant!.organizationId, evidenceId: String(evidence._id), actorId: req.auth!.userId, action: "downloaded" });
+    stream.pipe(res);
   } catch (error) { next(error); }
 });
 
