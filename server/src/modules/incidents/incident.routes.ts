@@ -82,7 +82,7 @@ incidentRouter.get("/summary", requirePermission("security:read"), async (req, r
     const [rows, severityRows] = await Promise.all([
       Incident.aggregate([
         { $match: { organizationId } },
-        { $group: { _id: null, total: { $sum: 1 }, active: { $sum: { $cond: [{ $not: [{ $in: ["$status", ["resolved", "closed"]] }] }, 1, 0] } }, critical: { $sum: { $cond: [{ $eq: ["$severity", "p1"] }, 1, 0] } }, investigating: { $sum: { $cond: [{ $eq: ["$status", "investigating"] }, 1, 0] } }, contained: { $sum: { $cond: [{ $eq: ["$status", "contained"] }, 1, 0] } }, resolved: { $sum: { $cond: [{ $in: ["$status", ["resolved", "closed"]] }, 1, 0] } } } },
+        { $group: { _id: null, total: { $sum: 1 }, active: { $sum: { $cond: [{ $not: [{ $in: ["$status", ["resolved", "closed"]] }] }, 1, 0] } }, critical: { $sum: { $cond: [{ $and: [{ $eq: ["$severity", "p1"] }, { $not: [{ $in: ["$status", ["resolved", "closed"]] }] }] }, 1, 0] } }, investigating: { $sum: { $cond: [{ $eq: ["$status", "investigating"] }, 1, 0] } }, contained: { $sum: { $cond: [{ $eq: ["$status", "contained"] }, 1, 0] } }, resolved: { $sum: { $cond: [{ $in: ["$status", ["resolved", "closed"]] }, 1, 0] } } } },
       ]),
       Incident.aggregate([{ $match: { organizationId } }, { $group: { _id: "$severity", count: { $sum: 1 } } }, { $sort: { _id: 1 } }]),
     ]);
