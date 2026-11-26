@@ -28,9 +28,9 @@ Express API (/api/v1)
 
 ## Tenant isolation
 
-- Every tenant-owned record must carry an `organizationId`.
+- Every tenant-owned record must carry an `organizationId`. Vendor documents include organization, creator, and updater references.
 - Resolve the active organization from a verified membership, not from an arbitrary client-supplied ID alone.
-- Scope every read, update, and delete query by both resource ID and organization ID.
+- Scope every read, update, and archive query by both resource ID and organization ID. Vendor list, summary, and search operations are also tenant-filtered.
 - Enforce membership and permission checks in backend middleware/services.
 - Add automated cross-tenant access tests before exposing tenant-owned endpoints.
 
@@ -58,7 +58,7 @@ Express API (/api/v1)
 
 ## Risk scoring principles
 
-Risk scores must be deterministic and explainable. Store the scoring model/version and the contributing category scores with each assessment snapshot. AI may summarize evidence or suggest mappings, but must not silently alter authoritative scores or approve vendors.
+Risk scores must be deterministic and explainable. The initial vendor-directory heuristic combines criticality (15/35/60/75), data sensitivity (0/5/12/18), and access level (0/5/12), capped at 100. Bands are low (<35), medium (35–59), high (60–79), and critical (80–100). This is a triage baseline, not a formal assessment; future assessment snapshots must preserve scoring-model version and contributing evidence. AI may summarize evidence or suggest mappings, but must not silently alter authoritative scores or approve vendors.
 
 ## File handling
 
