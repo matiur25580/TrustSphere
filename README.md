@@ -185,7 +185,7 @@ Risk scores and starter framework mappings are decision-support indicators, not 
 
 ### Run assessment and findings scoring tests
 
-From the repository root, run `npm run test --workspace server`. The suite includes pure scoring unit tests and MongoDB-backed API integration coverage. Runtime execution in GitHub Actions is still required before treating the checks as verified.
+From the repository root, run `npm run test --workspace server`. The suite includes pure scoring unit tests and MongoDB-backed API integration coverage. The latest GitHub Actions run completed successfully with workspace typechecking, production builds, scoring tests and MongoDB-backed API integration tests.
 
 ## Engineering principles
 
