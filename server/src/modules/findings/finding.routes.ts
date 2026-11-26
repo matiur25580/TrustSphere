@@ -79,7 +79,7 @@ findingRouter.get("/", requirePermission("risk:read"), async (req, res, next) =>
 findingRouter.post("/from-assessment/:assessmentId", requirePermission("risk:write"), async (req, res, next) => {
   try {
     if (!isValidObjectId(req.params.assessmentId)) { res.status(404).json({ error: { code: "ASSESSMENT_NOT_FOUND", message: "Assessment not found." } }); return; }
-    const assessment = await VendorAssessment.findOne({ _id: req.params.assessmentId, organizationId: req.tenant!.organizationId }).lean();
+    const assessment: any = await VendorAssessment.findOne({ _id: req.params.assessmentId, organizationId: req.tenant!.organizationId }).lean();
     if (!assessment) { res.status(404).json({ error: { code: "ASSESSMENT_NOT_FOUND", message: "Assessment not found in this organization." } }); return; }
     if (!["submitted", "approved", "rejected"].includes(assessment.status)) { res.status(409).json({ error: { code: "ASSESSMENT_NOT_SUBMITTED", message: "Submit the assessment before generating findings." } }); return; }
     const snapshot = assessment.templateSnapshot as { questions: Array<{ id: string; category: string; prompt: string; weight: number }> };
@@ -108,7 +108,7 @@ findingRouter.post("/from-assessment/:assessmentId", requirePermission("risk:wri
         throw error;
       }
       if (result.upsertedCount) {
-        const finding = await Finding.findOne({ organizationId: req.tenant!.organizationId, assessmentId: assessment._id, questionId: response.questionId }).lean();
+        const finding: any = await Finding.findOne({ organizationId: req.tenant!.organizationId, assessmentId: assessment._id, questionId: response.questionId }).lean();
         if (finding) {
           created.push(finding);
           await event({ organizationId: req.tenant!.organizationId, findingId: String(finding._id), actorId: req.auth!.userId, action: "created", details: { source: "assessment", questionId: response.questionId, severity: classification.severity } });
@@ -122,7 +122,7 @@ findingRouter.post("/from-assessment/:assessmentId", requirePermission("risk:wri
 findingRouter.post("/", requirePermission("risk:write"), async (req, res, next) => {
   try {
     const input = createSchema.parse(req.body);
-    const assessment = await VendorAssessment.findOne({ _id: input.assessmentId, organizationId: req.tenant!.organizationId }).lean();
+    const assessment: any = await VendorAssessment.findOne({ _id: input.assessmentId, organizationId: req.tenant!.organizationId }).lean();
     if (!assessment) { res.status(404).json({ error: { code: "ASSESSMENT_NOT_FOUND", message: "Assessment not found in this organization." } }); return; }
     if (!["submitted", "approved", "rejected"].includes(assessment.status)) { res.status(409).json({ error: { code: "ASSESSMENT_NOT_SUBMITTED", message: "Submit the assessment before creating a finding." } }); return; }
     const question = (assessment.templateSnapshot as { questions: Array<{ id: string; category: string; weight: number }> }).questions.find(item => item.id === input.questionId);
@@ -153,7 +153,7 @@ findingRouter.post("/", requirePermission("risk:write"), async (req, res, next) 
 findingRouter.get("/:id", requirePermission("risk:read"), async (req, res, next) => {
   try {
     if (!isValidObjectId(req.params.id)) { notFound(res); return; }
-    const finding = await Finding.findOne({ _id: req.params.id, organizationId: req.tenant!.organizationId }).populate("vendorId", "name").populate("assessmentId", "title status").lean();
+    const finding: any = await Finding.findOne({ _id: req.params.id, organizationId: req.tenant!.organizationId }).populate("vendorId", "name").populate("assessmentId", "title status").lean();
     if (!finding) { notFound(res); return; }
     const events = await FindingEvent.find({ findingId: finding._id, organizationId: req.tenant!.organizationId }).sort({ occurredAt: 1 }).lean();
     res.json({ data: { ...finding, events } });
