@@ -119,7 +119,21 @@ Evidence entries are metadata and opaque private-storage keys only. This reposit
 
 See [assessment module notes](server/src/modules/assessments/README.md) and [assessment security test plan](server/src/modules/assessments/assessment.test-plan.md).
 
-### Findings & Remediation API\n\nAll endpoints require an authenticated active tenant.\n\n- `GET /api/v1/findings/summary` — tenant-scoped operational counts, overdue and critical findings.\n- `GET /api/v1/findings?page=1&limit=10&status=&severity=&priority=&vendorId=&assessmentId=` — filtered, paginated findings.\n- `POST /api/v1/findings/from-assessment/:assessmentId` — idempotently generate findings from No/Partial answers in a submitted assessment.\n- `POST /api/v1/findings` — create a finding for an existing No/Partial response.\n- `GET /api/v1/findings/:id` — finding details and activity history.\n- `PATCH /api/v1/findings/:id` — update remediation plan, owner, due date and classification.\n- `POST /api/v1/findings/:id/transition` — start work, submit for validation, independently validate/reopen, or accept residual risk.\n\nThe deterministic severity/priority classifier is a triage aid, not a regulatory severity decision. Finding generation is idempotent per tenant/assessment/question. Owners/admins validate remediation, and the finding creator cannot validate their own work. Activity events are append-only through the API, but transactions and tamper-proof audit storage remain future hardening. See [findings module notes](server/src/modules/findings/README.md) and [findings security test plan](server/src/modules/findings/finding.test-plan.md).\n\n### Run assessment and findings scoring tests
+### Findings & Remediation API
+
+All endpoints require an authenticated active tenant.
+
+- `GET /api/v1/findings/summary` — tenant-scoped operational counts, overdue and critical findings.
+- `GET /api/v1/findings?page=1&limit=10&status=&severity=&priority=&vendorId=&assessmentId=` — filtered, paginated findings.
+- `POST /api/v1/findings/from-assessment/:assessmentId` — idempotently generate findings from No/Partial answers in a submitted assessment.
+- `POST /api/v1/findings` — create a finding for an existing No/Partial response.
+- `GET /api/v1/findings/:id` — finding details and activity history.
+- `PATCH /api/v1/findings/:id` — update remediation plan, owner, due date and classification.
+- `POST /api/v1/findings/:id/transition` — start work, submit for validation, independently validate/reopen, or accept residual risk.
+
+The deterministic severity/priority classifier is a triage aid, not a regulatory severity decision. Finding generation is idempotent per tenant/assessment/question. Owners/admins validate remediation, and the finding creator cannot validate their own work. Activity events are append-only through the API, but transactions and tamper-proof audit storage remain future hardening. See [findings module notes](server/src/modules/findings/README.md) and [findings security test plan](server/src/modules/findings/finding.test-plan.md).
+
+### Run assessment and findings scoring tests
 
 From the repository root, run `npm run test --workspace server`. These are pure scoring unit tests; they do not replace API, MongoDB, or cross-tenant integration tests.
 
