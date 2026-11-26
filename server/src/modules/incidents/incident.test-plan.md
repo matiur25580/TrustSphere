@@ -10,7 +10,7 @@ The MongoDB-backed integration suite in `../findings/finding.integration.test.ts
 - [x] Analyst cannot close an incident.
 - [x] Activity history records containment and closure.
 - [x] Summary endpoint is tenant scoped.
-- [ ] Invalid cross-tenant vendor, finding and assignee references have explicit assertions.
+- [x] Cross-tenant vendor references are rejected; foreign finding and assignee cases still need explicit assertions.
 - [ ] Concurrent transition behavior and event/write consistency are verified.
 - [ ] Browser-level incident workflow is tested.
 
