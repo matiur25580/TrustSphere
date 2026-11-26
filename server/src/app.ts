@@ -9,6 +9,7 @@ import { identityRouter } from "./modules/identity/identity.routes.js";
 import { tenantRouter } from "./modules/identity/tenant.routes.js";
 import { vendorRouter } from "./modules/vendors/vendor.routes.js";
 import { assessmentRouter } from "./modules/assessments/assessment.routes.js";
+import { findingRouter } from "./modules/findings/finding.routes.js";
 
 export function createApp() {
   const app = express();
@@ -44,6 +45,7 @@ export function createApp() {
   app.use("/api/v1/tenant", tenantRouter);
   app.use("/api/v1/vendors", vendorRouter);
   app.use("/api/v1/assessments", assessmentRouter);
+  app.use("/api/v1/findings", findingRouter);
   app.use(notFoundHandler);
   app.use(errorHandler);
 
