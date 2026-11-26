@@ -65,6 +65,17 @@ async function validateLinks(organizationId: string, input: { vendorId?: string;
   return null;
 }
 
+incidentRouter.get("/members", requirePermission("security:read"), async (req, res, next) => {
+  try {
+    const members = await Membership.find({ organizationId: req.tenant!.organizationId, status: "active" })
+      .populate("userId", "name email").sort({ createdAt: 1 }).lean();
+    res.json({ data: members.map(member => {
+      const user = member.userId as unknown as { _id: Types.ObjectId; name: string; email: string };
+      return { id: String(user._id), name: user.name, email: user.email, role: member.role };
+    }) });
+  } catch (error) { next(error); }
+});
+
 incidentRouter.get("/summary", requirePermission("security:read"), async (req, res, next) => {
   try {
     const organizationId = new Types.ObjectId(req.tenant!.organizationId);
