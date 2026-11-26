@@ -43,8 +43,8 @@ export function IncidentsWorkspace({ accessToken, organizationId, canWrite, canR
     setLoading(true); setError("");
     try {
       const query = `/api/v1/incidents?limit=50${statusFilter ? `&status=${statusFilter}` : ""}${severityFilter ? `&severity=${severityFilter}` : ""}`;
-      const [incidentData, vendorData, findingData, memberData] = await Promise.all([
-        request(query), request("/api/v1/vendors?limit=50"), request("/api/v1/findings?limit=50"), request("/api/v1/incidents/members"),
+      const [incidentData, vendorData, findingData, memberData, summaryData] = await Promise.all([
+        request(query), request("/api/v1/vendors?limit=50"), request("/api/v1/findings?limit=50"), request("/api/v1/incidents/members"), request("/api/v1/incidents/summary"),
       ]);
       setItems(incidentData as Incident[]);
       setVendors(vendorData as Option[]);
@@ -68,7 +68,7 @@ export function IncidentsWorkspace({ accessToken, organizationId, canWrite, canR
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Unable to create incident."); }
     finally { setBusy(false); }
   }
-  async function updateDetails(event: React.FormEvent<HTMLFormElement>) {
+  async function updateDetails(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); if (!selected) return; setBusy(true); setError(""); setNotice("");
     const data = new FormData(event.currentTarget);
     const body = Object.fromEntries(data.entries());
@@ -86,7 +86,7 @@ export function IncidentsWorkspace({ accessToken, organizationId, canWrite, canR
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Unable to update incident."); }
     finally { setBusy(false); }
   }
-  async function addComment(event: React.FormEvent<HTMLFormElement>) {
+  async function addComment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); if (!selected) return; setBusy(true); setError("");
     try {
       await request(`/api/v1/incidents/${selected._id}/comments`, { method: "POST", body: JSON.stringify({ comment }) });
@@ -95,8 +95,6 @@ export function IncidentsWorkspace({ accessToken, organizationId, canWrite, canR
     finally { setBusy(false); }
   }
 
-  const active = items.filter(item => !["resolved", "closed"].includes(item.status)).length;
-  const p1 = items.filter(item => item.severity === "p1" && !["resolved", "closed"].includes(item.status)).length;
   const actionFor: Partial<Record<Status, Array<{ action: string; label: string }>>> = {
     reported: [{ action: "triage", label: "Triage incident" }, { action: "investigate", label: "Start investigation" }],
     triaged: [{ action: "investigate", label: "Start investigation" }, { action: "contain", label: "Mark contained" }],
