@@ -96,6 +96,7 @@ evidenceRouter.get("/", requirePermission("compliance:read"), async (req, res, n
     const filter: Record<string, unknown> = { organizationId: req.tenant!.organizationId };
     if (controlId) filter.controlId = controlId;
     if (status) filter.status = status;
+    await ComplianceEvidence.updateMany({ organizationId: req.tenant!.organizationId, status: "approved", expiresAt: { $lte: new Date(), $ne: null } }, { $set: { status: "expired" } });
     const records = await ComplianceEvidence.find(filter).sort({ createdAt: -1 }).limit(100)
       .select("-storageKey -__v").lean();
     res.json({ data: records });
@@ -134,6 +135,13 @@ evidenceRouter.get("/:id/download", requirePermission("compliance:read"), async 
     if (!isValidObjectId(req.params.id)) { res.status(400).json({ error: { code: "INVALID_EVIDENCE_ID", message: "Evidence identifier is invalid." } }); return; }
     const evidence = await ComplianceEvidence.findOne({ _id: req.params.id, organizationId: req.tenant!.organizationId });
     if (!evidence) { res.status(404).json({ error: { code: "EVIDENCE_NOT_FOUND", message: "Evidence not found." } }); return; }
+    if (evidence.status !== "approved" && String(evidence.uploadedBy) !== req.auth!.userId && !["owner", "admin"].includes(req.tenant!.role)) {
+      res.status(403).json({ error: { code: "EVIDENCE_NOT_APPROVED", message: "Only the uploader, an organization reviewer, or members with approved evidence access can download this file." } }); return;
+    }
+    if (evidence.expiresAt && evidence.expiresAt <= new Date() && evidence.status === "approved") {
+      evidence.status = "expired"; await evidence.save();
+    }
+    if (evidence.status === "expired") { res.status(410).json({ error: { code: "EVIDENCE_EXPIRED", message: "This evidence has expired and cannot be downloaded." } }); return; }
     const filePath = path.join(storageDirectory, req.tenant!.organizationId, evidence.storageKey);
     res.setHeader("Content-Type", evidence.mimeType);
     res.setHeader("Content-Length", evidence.sizeBytes);
