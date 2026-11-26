@@ -70,8 +70,13 @@ evidenceRouter.post("/", requirePermission("compliance:write"), uploadLimiter, (
         res.status(400).json({ error: { code: "FILE_REQUIRED", message: "Choose a file to upload." } }); return;
       }
       const mimeType = detectMime(req.file.buffer);
-      if (!mimeType) {
-        res.status(415).json({ error: { code: "UNSUPPORTED_FILE_TYPE", message: "Only valid PDF, PNG, JPEG and UTF-8 text files are accepted." } }); return;
+      const extension = path.extname(req.file.originalname).toLowerCase();
+      const extensionMime: Record<string, string> = {
+        ".pdf": "application/pdf", ".png": "image/png", ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg", ".txt": "text/plain",
+      };
+      if (!mimeType || (extensionMime[extension] && extensionMime[extension] !== mimeType)) {
+        res.status(415).json({ error: { code: "UNSUPPORTED_FILE_TYPE", message: "File content must match its supported extension and be a valid PDF, PNG, JPEG or UTF-8 text file." } }); return;
       }
       const organizationId = req.tenant!.organizationId;
       const storageKey = randomUUID();
