@@ -22,6 +22,10 @@ Severity and priority are deterministic triage suggestions derived from the sour
 
 Finding and activity queries are scoped to the authenticated tenant. The unique tenant/assessment/question index makes assessment-to-finding generation idempotent. Activity events are append-only through this API, but database-level tamper resistance and atomic transaction guarantees are not implemented.
 
+## Automated integration coverage
+
+Run `npm run test --workspace server` from the repository root. The MongoDB-backed integration suite uses an ephemeral MongoDB instance and verifies viewer read/write permissions, tenant isolation, idempotent generation, remediation prerequisites, independent review, resolved status, and activity history. It complements the scoring unit tests; it does not establish production security certification or test concurrent write races.
+
 ## Evidence
 
 This milestone references the assessment and question that produced the finding. Evidence remains metadata/private-storage integration from the assessment module; no binary upload or public file serving is introduced here.
