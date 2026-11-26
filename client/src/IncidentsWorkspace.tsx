@@ -12,6 +12,7 @@ type Incident = {
 };
 type Option = { _id: string; name?: string; title?: string };
 type MemberOption = { id: string; name: string; email: string; role: string };
+type IncidentSummary = { total: number; active: number; critical: number; investigating: number; contained: number; resolved: number };
 const statuses: Status[] = ["reported", "triaged", "investigating", "contained", "recovering", "resolved", "closed"];
 const categories = ["data_breach", "unauthorized_access", "malware", "service_disruption", "vendor_incident", "phishing", "policy_violation", "other"];
 const blank = { title: "", summary: "", category: "unauthorized_access", severity: "p3", source: "internal", vendorId: "", findingId: "", assignedTo: "", impact: "" };
@@ -22,6 +23,7 @@ export function IncidentsWorkspace({ accessToken, organizationId, canWrite, canR
   const [vendors, setVendors] = useState<Option[]>([]);
   const [findings, setFindings] = useState<Option[]>([]);
   const [members, setMembers] = useState<MemberOption[]>([]);
+  const [summary, setSummary] = useState<IncidentSummary>({ total: 0, active: 0, critical: 0, investigating: 0, contained: 0, resolved: 0 });
   const [form, setForm] = useState(blank);
   const [statusFilter, setStatusFilter] = useState("");
   const [severityFilter, setSeverityFilter] = useState("");
@@ -50,6 +52,7 @@ export function IncidentsWorkspace({ accessToken, organizationId, canWrite, canR
       setVendors(vendorData as Option[]);
       setFindings(findingData as Option[]);
       setMembers(memberData as MemberOption[]);
+      setSummary(summaryData as IncidentSummary);
       if (selected) {
         try { const detail = await request(`/api/v1/incidents/${selected._id}`); setSelected(detail as Incident); }
         catch { setSelected(null); }
