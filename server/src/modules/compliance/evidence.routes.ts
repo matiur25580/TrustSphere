@@ -17,6 +17,7 @@ const MAX_FILE_BYTES = 25 * 1024 * 1024;
 const SUPPORTED_CONTROL_IDS: string[] = ["access-mfa", "access-review", "security-policy", "risk-assessment", "encryption", "logging-monitoring", "incident-response", "backup-recovery", "supplier-security", "change-management"];
 const REVIEWER_ROLES: string[] = ["owner", "admin"];
 const EVIDENCE_STATUSES: string[] = ["pending_review", "approved", "rejected", "expired"];
+const EXPIRABLE_STATUSES: string[] = ["approved", "pending_review"];
 const storageDirectory = path.resolve(process.env.EVIDENCE_STORAGE_DIR || ".trustsphere-private-evidence");
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_FILE_BYTES, files: 1, fields: 4 } });
 const uploadLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHeaders: "draft-7", legacyHeaders: false });
@@ -153,7 +154,7 @@ evidenceRouter.get("/:id/download", requirePermission("compliance:read"), async 
     if (evidence.status !== "approved" && String(evidence.uploadedBy) !== req.auth!.userId && !REVIEWER_ROLES.includes(req.tenant!.role)) {
       res.status(403).json({ error: { code: "EVIDENCE_NOT_APPROVED", message: "Only the uploader, an organization reviewer, or members with approved evidence access can download this file." } }); return;
     }
-    if (evidence.expiresAt && evidence.expiresAt.getTime() <= Date.now() && ["approved", "pending_review"].includes(evidence.status)) {
+    if (evidence.expiresAt && evidence.expiresAt.getTime() <= Date.now() && EXPIRABLE_STATUSES.includes(evidence.status)) {
       evidence.status = "expired"; await evidence.save();
     }
     if (evidence.status === "expired") { res.status(410).json({ error: { code: "EVIDENCE_EXPIRED", message: "This evidence has expired and cannot be downloaded." } }); return; }
