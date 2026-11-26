@@ -92,7 +92,7 @@ assessmentRouter.get("/", requirePermission("risk:read"), async (req, res, next)
 assessmentRouter.post("/", requirePermission("risk:write"), async (req, res, next) => {
   try {
     const input = createSchema.parse(req.body);
-    const vendor = await Vendor.findOne({ _id: input.vendorId, organizationId: req.tenant!.organizationId, archivedAt: null }).select("_id name").lean();
+    const vendor: any = await Vendor.findOne({ _id: input.vendorId, organizationId: req.tenant!.organizationId, archivedAt: null }).select("_id name").lean();
     if (!vendor) { res.status(404).json({ error: { code: "VENDOR_NOT_FOUND", message: "Vendor not found in this organization." } }); return; }
     const assessment = await VendorAssessment.create({
       organizationId: req.tenant!.organizationId, vendorId: vendor._id, createdBy: req.auth!.userId,
@@ -107,7 +107,7 @@ assessmentRouter.post("/", requirePermission("risk:write"), async (req, res, nex
 assessmentRouter.get("/:id", requirePermission("risk:read"), async (req, res, next) => {
   try {
     if (!isValidObjectId(req.params.id)) { res.status(404).json({ error: { code: "ASSESSMENT_NOT_FOUND", message: "Assessment not found." } }); return; }
-    const assessment = await VendorAssessment.findOne({ _id: req.params.id, organizationId: req.tenant!.organizationId }).populate("vendorId", "name category").lean();
+    const assessment: any = await VendorAssessment.findOne({ _id: req.params.id, organizationId: req.tenant!.organizationId }).populate("vendorId", "name category").lean();
     if (!assessment) { res.status(404).json({ error: { code: "ASSESSMENT_NOT_FOUND", message: "Assessment not found." } }); return; }
     const events = await AssessmentEvent.find({ assessmentId: assessment._id, organizationId: req.tenant!.organizationId }).sort({ occurredAt: 1 }).lean();
     res.json({ data: { ...assessment, events } });
@@ -151,9 +151,9 @@ assessmentRouter.post("/:id/submit", requirePermission("risk:write"), async (req
     for (const response of assessment.responses) responseMap.set(response.questionId, response.answer);
     const missing = snapshot.questions.filter(question => question.required && !responseMap.has(question.id));
     if (missing.length) { res.status(400).json({ error: { code: "REQUIRED_RESPONSES_MISSING", message: "Complete every required question before submitting.", details: { missingQuestionIds: missing.map(question => question.id) } } }); return; }
-    const scoreableResponses = assessment.responses.filter(response => response.answer !== "not_applicable");
+    const scoreableResponses = assessment.responses.filter((response: { answer: string }) => response.answer !== "not_applicable");
     if (scoreableResponses.length === 0) { res.status(400).json({ error: { code: "NO_SCORABLE_RESPONSES", message: "At least one question must have a scored answer; an all-not-applicable assessment cannot produce a risk rating." } }); return; }
-    const scored = scoreResponses(scoreableResponses.map(response => ({ questionId: response.questionId, answer: response.answer })), snapshot.questions);
+    const scored = scoreResponses(scoreableResponses.map((response: { questionId: string; answer: string }) => ({ questionId: response.questionId, answer: response.answer })), snapshot.questions);
     assessment.scoreModelVersion = SCORE_MODEL_VERSION;
     assessment.riskScore = scored.score;
     assessment.riskBand = scored.band;
