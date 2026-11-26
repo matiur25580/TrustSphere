@@ -273,6 +273,17 @@ test("reports API returns live tenant analytics, distributions and CSV export", 
 
 
 test("incident API enforces tenant scope, RBAC, lifecycle transitions and event history", async () => {
+  const foreignVendor = await Vendor.create({
+    organizationId: new mongoose.Types.ObjectId(otherOrganizationId), createdBy: new mongoose.Types.ObjectId(), updatedBy: new mongoose.Types.ObjectId(),
+    name: "Foreign Tenant Vendor", normalizedName: "foreign tenant vendor", category: "Payment processor",
+    criticality: "high", dataSensitivity: "confidential", accessLevel: "privileged", status: "active", riskScore: 77, riskBand: "high",
+  });
+  const foreignReference = await api(analystToken).post("/api/v1/incidents").send({
+    title: "Foreign vendor incident", summary: "This request must not link a vendor from another organization.",
+    category: "vendor_incident", severity: "p2", vendorId: String(foreignVendor._id),
+  });
+  assert.equal(foreignReference.status, 400);
+
   const created = await api(analystToken).post("/api/v1/incidents").send({
     title: "Suspicious privileged access", summary: "A privileged service account showed unusual access from an unrecognized location.",
     category: "unauthorized_access", severity: "p2", source: "vendor", vendorId, findingId,
