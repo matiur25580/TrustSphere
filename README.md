@@ -133,9 +133,21 @@ All endpoints require an authenticated active tenant.
 
 The deterministic severity/priority classifier is a triage aid, not a regulatory severity decision. Finding generation is idempotent per tenant/assessment/question. Owners/admins validate remediation, and the finding creator cannot validate their own work. Activity events are append-only through the API, but transactions and tamper-proof audit storage remain future hardening. See [findings module notes](server/src/modules/findings/README.md) and [findings security test plan](server/src/modules/findings/finding.test-plan.md).
 
+### Compliance Framework & Control Mapping
+
+The starter compliance workspace maps ten shared control statements to selected SOC 2 Trust Services Criteria and ISO/IEC 27001:2022 Annex A references. The catalog is versioned as `trustsphere-control-catalog-v1`; organization-specific implementation status, accountable owner, notes and evidence metadata are stored separately per tenant.
+
+- `GET /api/v1/compliance/frameworks` — available framework summaries and catalog disclaimer.
+- `GET /api/v1/compliance/summary` — tenant-scoped implementation counts and coverage.
+- `GET /api/v1/compliance/controls?framework=soc2|iso27001-2022` — mapped controls and current tenant implementation.
+- `PUT /api/v1/compliance/controls/:controlId` — update implementation status, owner, notes and evidence metadata.
+- `GET /api/v1/compliance/controls/:controlId/events` — recent control implementation activity.
+
+The React workspace supports framework filtering and control implementation updates. Evidence is metadata plus an opaque organization-prefixed storage key; binary upload, private object storage, malware scanning and download authorization are not implemented. The starter crosswalk is an implementation aid, not an official interpretation, audit opinion or certification. See [compliance module notes](server/src/modules/compliance/README.md).
+
 ### Run assessment and findings scoring tests
 
-From the repository root, run `npm run test --workspace server`. These are pure scoring unit tests; they do not replace API, MongoDB, or cross-tenant integration tests.
+From the repository root, run `npm run test --workspace server`. The suite includes pure scoring unit tests and MongoDB-backed API integration coverage. Runtime execution in GitHub Actions is still required before treating the checks as verified.
 
 ## Engineering principles
 
