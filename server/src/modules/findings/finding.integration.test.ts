@@ -263,7 +263,7 @@ test("reports API returns live tenant analytics, distributions and CSV export", 
 
   const csv = await api(viewerToken).get("/api/v1/reports/export.csv?range=7d");
   assert.equal(csv.status, 200);
-  assert.match(csv.headers["content-type"], /text\\/csv/);
+  assert.match(csv.headers["content-type"], /text\/csv/);
   assert.match(csv.text, /controlCoveragePercent/);
   assert.match(csv.text, /Daily trend/);
 
