@@ -324,6 +324,7 @@ type AssessmentRecord = {
   responses: AssessmentResponse[];
   categoryBreakdown?: { category: string; score: number; answeredWeight: number; totalWeight: number }[];
   reviewerComment?: string;
+  events?: { _id: string; action: string; actorId: string; occurredAt: string }[];
 };
 type VendorOption = { _id: string; name: string; category: string };
 type AnswerDraft = { answer: AssessmentResponse["answer"]; comment: string; storageKey: string; fileName: string; sizeBytes: string; sha256: string };
@@ -496,9 +497,11 @@ function AssessmentWorkspace({ accessToken, organizationId, canWrite, canReview 
               <select disabled={locked} value={draft.answer} onChange={event => updateAnswer(question.id,{answer:event.target.value as AnswerDraft["answer"]})}><option value="yes">Yes — implemented</option><option value="partial">Partially implemented</option><option value="no">No — not implemented</option><option value="not_applicable">Not applicable</option></select>
               <textarea disabled={locked} rows={2} value={draft.comment} onChange={event => updateAnswer(question.id,{comment:event.target.value})} placeholder="Add context or remediation notes…"/>
               {!locked && <div className="evidence-reference"><input value={draft.storageKey} onChange={event => updateAnswer(question.id,{storageKey:event.target.value})} placeholder="Private object storage key (optional)"/><input value={draft.fileName} onChange={event => updateAnswer(question.id,{fileName:event.target.value})} placeholder="Evidence filename"/><input inputMode="numeric" value={draft.sizeBytes} onChange={event => updateAnswer(question.id,{sizeBytes:event.target.value})} placeholder="File size in bytes"/><input value={draft.sha256} onChange={event => updateAnswer(question.id,{sha256:event.target.value})} placeholder="SHA-256 checksum (64 hex characters)"/></div>}
+              {locked && draft.storageKey && <p className="evidence-readonly">Evidence reference: {draft.fileName} · {draft.sizeBytes} bytes · SHA-256 {draft.sha256.slice(0,12)}…</p>}
             </article>;
           })}</div>
           {selected.reviewerComment && <p className="reviewer-comment"><strong>Reviewer note:</strong> {selected.reviewerComment}</p>}
+          {selected.events?.length ? <div className="assessment-history"><strong>Assessment history</strong>{selected.events.map(event => <div key={event._id}><span className="history-marker"/><span><b>{event.action.replace("_"," ")}</b><small>{new Date(event.occurredAt).toLocaleString()}</small></span></div>)}</div> : null}
           {canWrite && ["draft","in_progress"].includes(selected.status) && <div className="assessment-actions"><button className="subtle-button" disabled={busy} onClick={() => void saveResponses(false)}>Save responses</button><button className="primary-button" disabled={busy} onClick={() => void saveResponses(true)}>Submit for review <ArrowUpRight size={14}/></button></div>}
           {canReview && selected.status === "submitted" && <div className="assessment-actions"><button className="subtle-button" disabled={busy} onClick={() => void review("rejected")}>Request changes / Reject</button><button className="primary-button" disabled={busy} onClick={() => void review("approved")}>Approve assessment <CheckCircle2 size={14}/></button></div>}
           <p className="assessment-disclaimer">Decision support only. This questionnaire score is not a certification, audit opinion, or regulatory compliance determination.</p>
