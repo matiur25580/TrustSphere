@@ -166,7 +166,7 @@ All reporting endpoints require an authenticated active tenant and the `reports:
 
 The reporting workspace includes vendor risk bands, assessment risk bands, finding severity and lifecycle, compliance implementation coverage, evidence lifecycle, overdue remediation, assessments awaiting review and evidence awaiting review. The selected date range filters vendor, assessment and finding creation activity; compliance and evidence status are current snapshots. The print-optimized report can be saved as PDF using the browser print dialog.
 
-Risk scores and starter framework mappings are decision-support indicators, not certifications, audit opinions or regulatory determinations. The dashboard and report endpoints are tenant-scoped; all analytics are aggregated using the active organization identifier resolved by membership middleware.
+Risk scores and starter framework mappings are decision-support indicators, not certifications, audit opinions or regulatory determinations. The dashboard and report endpoints are tenant-scoped; all analytics are aggregated using the active organization identifier resolved by membership middleware. See [reporting module notes](server/src/modules/reports/README.md) for metric definitions and date-window semantics.
 
 ### Run assessment and findings scoring tests
 
