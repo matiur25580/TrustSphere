@@ -4,7 +4,7 @@
 
 TrustSphere is a multi-tenant SaaS platform concept for managing third-party vendors, assessing operational and cybersecurity risks, organizing compliance evidence, and coordinating remediation workflows.
 
-> **Project status:** Identity, tenant context, vendor management, vendor security assessments, and the first findings/remediation workflow are implemented in the repository. Full runtime/API integration and cross-tenant security verification remain pending; this is not a production-certified system.
+> **Project status:** Identity, tenant context, vendor management, vendor security assessments, findings/remediation, compliance evidence, enterprise reporting, and an initial incident response lifecycle are implemented in the repository. Runtime/API integration, cross-tenant security verification and production hardening remain pending; this is not a production-certified system.
 
 ## Product goals
 
@@ -66,7 +66,7 @@ npm run dev
 
 The Vite client runs at `http://localhost:5173` and proxies `/api` requests to the Express API at `http://localhost:5000`. The API health endpoint is `GET /api/v1/health`.
 
-The dashboard includes a tenant-scoped vendor directory, assessment and remediation workspaces, compliance evidence management, and live portfolio reporting. Executive metrics, risk distributions, activity trends and attention queues are aggregated from MongoDB for the selected organization. CSV export is available, and the report view can be printed or saved as PDF from the browser print dialog.
+The dashboard includes a tenant-scoped vendor directory, assessment and remediation workspaces, compliance evidence management, incident response operations, and live portfolio reporting. Executive metrics, risk distributions, activity trends and attention queues are aggregated from MongoDB for the selected organization. CSV export is available, and the report view can be printed or saved as PDF from the browser print dialog.
 
 ### Authentication configuration
 
