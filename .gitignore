@@ -10,3 +10,6 @@ coverage/
 .vscode/
 .idea/
 *.tsbuildinfo
+# Private local evidence and test fixtures
+.trustsphere-private-evidence/
+.trustsphere-test-evidence/
