@@ -28,7 +28,7 @@ function DistributionList({ title, items }: { title: string; items: Distribution
   return <article className="report-panel">
     <h3>{title}</h3>
     {items.length === 0 ? <p className="report-empty">No records in this period.</p> : <div className="report-bars">{items.map(item => <div className="report-bar-row" key={item.label}>
-      <span>{item.label.replaceAll("_", " ")}</span><div><i style={{ width: `${Math.max(item.count ? 3 : 0, item.count / maximum * 100)}%` }}/></div><strong>{item.count}</strong>
+      <span>{item.label.replace(/_/g, " ")}</span><div><i style={{ width: `${Math.max(item.count ? 3 : 0, item.count / maximum * 100)}%` }}/></div><strong>{item.count}</strong>
     </div>)}</div>}
   </article>;
 }
