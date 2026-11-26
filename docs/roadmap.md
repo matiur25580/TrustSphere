@@ -26,7 +26,9 @@ Status is intentionally conservative: unchecked implementation items have not ye
 - [ ] Configurable questionnaire authoring (baseline v1 template snapshot implemented; authoring UI pending)
 - [x] Answer submission and owner/admin review workflow (runtime verification pending)
 - [x] Versioned template snapshot and explainable category-weighted scoring (scoring unit tests added; full API verification pending)
-- [x] Findings generated from failed/partial assessment responses (runtime verification pending)\n- [x] Tenant-scoped remediation workflow, due dates, ownership and independent validation (integration verification pending)\n- [x] Finding activity history and deterministic severity/priority triage (tamper resistance and transaction boundary pending)
+- [x] Findings generated from failed/partial assessment responses (runtime verification pending)
+- [x] Tenant-scoped remediation workflow, due dates, ownership and independent validation (integration verification pending)
+- [x] Finding activity history and deterministic severity/priority triage (tamper resistance and transaction boundary pending)
 - [x] Human approval/rejection workflow (integration verification pending)
 - [x] Append-only assessment event history at API level (tamper resistance and transaction boundary pending)
 
