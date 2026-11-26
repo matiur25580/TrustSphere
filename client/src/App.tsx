@@ -104,6 +104,27 @@ function App() {
     return () => controller.abort();
   }, []);
 
+  useEffect(() => {
+    if (!session) return;
+    const interval = window.setInterval(async () => {
+      try {
+        const response = await fetch("/api/v1/auth/refresh", { method: "POST", credentials: "include" });
+        if (!response.ok) {
+          setSession(null);
+          setActiveOrganization(null);
+          return;
+        }
+        const payload = await response.json() as { data?: { accessToken: string } };
+        if (payload.data?.accessToken) {
+          setSession(current => current ? { ...current, accessToken: payload.data!.accessToken } : null);
+        }
+      } catch {
+        // A transient network failure does not immediately destroy the current in-memory session.
+      }
+    }, 12 * 60 * 1000);
+    return () => window.clearInterval(interval);
+  }, [session?.user.id]);
+
   function handleAuthenticated(next: AuthSession) {
     setSession(next);
     setActiveOrganization(next.organizations[0]);
