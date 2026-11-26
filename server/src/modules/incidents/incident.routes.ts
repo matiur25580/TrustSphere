@@ -98,7 +98,7 @@ incidentRouter.get("/", requirePermission("security:read"), async (req, res, nex
     if (typeof req.query.status === "string" && ["reported", "triaged", "investigating", "contained", "recovering", "resolved", "closed"].includes(req.query.status)) filter.status = req.query.status;
     if (typeof req.query.severity === "string" && ["p1", "p2", "p3", "p4"].includes(req.query.severity)) filter.severity = req.query.severity;
     if (typeof req.query.category === "string" && categories.includes(req.query.category as typeof categories[number])) filter.category = req.query.category;
-    if (typeof req.query.q === "string" && req.query.q.trim()) filter.$or = [{ title: { $regex: req.query.q.trim().slice(0, 80), $options: "i" } }, { summary: { $regex: req.query.q.trim().slice(0, 80), $options: "i" } }];
+    if (typeof req.query.q === "string" && req.query.q.trim()) {\n      const search = req.query.q.trim().slice(0, 80).replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\if (typeof req.query.q === "string" && req.query.q.trim()) filter.$or = [{ title: { $regex: req.query.q.trim().slice(0, 80), $options: "i" } }, { summary: { $regex: req.query.q.trim().slice(0, 80), $options: "i" } }];");\n      filter.$or = [{ title: { $regex: search, $options: "i" } }, { summary: { $regex: search, $options: "i" } }];\n    }
     const [items, total] = await Promise.all([
       Incident.find(filter).sort({ severity: 1, reportedAt: -1 }).skip((page - 1) * limit).limit(limit).populate("vendorId", "name").populate("findingId", "title severity status").populate("assignedTo", "name email").lean(),
       Incident.countDocuments(filter),
