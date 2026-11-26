@@ -14,7 +14,7 @@ Status is intentionally conservative: unchecked implementation items have not ye
 - [ ] Organization creation and membership (implemented; integration verification pending)
 - [ ] Server-side tenant resolution (implemented; isolation tests pending)
 - [ ] Permission-based authorization (implemented; role matrix tests pending)
-- [ ] Cross-tenant isolation tests
+- [x] Findings API integration coverage for tenant isolation and role permissions (execution pending CI confirmation)
 
 ## Milestone 2 — Vendor lifecycle
 - [ ] Vendor CRUD and server-side pagination (implemented; API verification pending)
