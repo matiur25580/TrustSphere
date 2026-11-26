@@ -241,3 +241,31 @@ test("evidence API validates uploads, scopes access and requires independent app
     .send({ decision: "approved" });
   assert.equal(selfReview.status, 403);
 });
+
+test("reports API returns live tenant analytics, distributions and CSV export", async () => {
+  const overview = await api(viewerToken).get("/api/v1/reports/overview?range=30d");
+  assert.equal(overview.status, 200);
+  assert.equal(overview.body.data.meta.range, "30d");
+  assert.equal(overview.body.data.summary.vendorsCreated, 1);
+  assert.equal(overview.body.data.summary.highRiskVendors, 1);
+  assert.equal(overview.body.data.summary.assessmentsCreated, 1);
+  assert.equal(overview.body.data.summary.findingsCreated, 1);
+  assert.equal(overview.body.data.summary.controlCoveragePercent, 10);
+  assert.ok(overview.body.data.distributions.findingStatus.some((item: { label: string; count: number }) => item.label === "resolved" && item.count === 1));
+  assert.ok(Array.isArray(overview.body.data.trend));
+
+  const outsider = await api(outsiderToken, otherOrganizationId).get("/api/v1/reports/overview?range=90d");
+  assert.equal(outsider.status, 200);
+  assert.equal(outsider.body.data.summary.vendorsCreated, 0);
+  assert.equal(outsider.body.data.summary.findingsCreated, 0);
+  assert.equal(outsider.body.data.summary.controlCoveragePercent, 0);
+
+  const csv = await api(viewerToken).get("/api/v1/reports/export.csv?range=7d");
+  assert.equal(csv.status, 200);
+  assert.match(csv.headers["content-type"], /text\\/csv/);
+  assert.match(csv.text, /controlCoveragePercent/);
+  assert.match(csv.text, /Daily trend/);
+
+  const forbidden = await request(app).get("/api/v1/reports/overview");
+  assert.equal(forbidden.status, 401);
+});
