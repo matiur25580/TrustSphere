@@ -91,7 +91,7 @@ async function buildReport(organizationId: string, range: ReportRange) {
     Finding.aggregate([{ $match: { organizationId: organization, createdAt: createdInRange } }, { $group: { _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } }, count: { $sum: 1 } } }]),
     Finding.find({ organizationId: organization, status: { $in: activeFindingStatuses }, dueDate: { $lt: generatedAt } }).sort({ dueDate: 1 }).limit(6).populate("vendorId", "name").select("title severity priority status dueDate vendorId").lean(),
     VendorAssessment.find({ organizationId: organization, status: "submitted" }).sort({ submittedAt: 1 }).limit(5).populate("vendorId", "name").select("title submittedAt vendorId").lean(),
-    ComplianceEvidence.find({ organizationId: organization, status: "pending_review" }).sort({ createdAt: 1 }).limit(5).select("fileName controlId createdAt expiresAt").lean(),
+    ComplianceEvidence.find({ organizationId: organization, status: "pending_review", $or: [{ expiresAt: null }, { expiresAt: { $gt: generatedAt } }] }).sort({ createdAt: 1 }).limit(5).select("fileName controlId createdAt expiresAt").lean(),
   ]);
 
   const vendor = vendorRows[0] ?? { total: 0, active: 0, highRisk: 0, averageRisk: null };
