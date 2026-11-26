@@ -1,26 +1,26 @@
 # Product Roadmap
 
-Status is intentionally conservative: an item is complete only after implementation and verification.
+Status is intentionally conservative: unchecked implementation items have not yet passed automated/runtime verification.
 
 ## Milestone 0 — Foundation
 - [x] Repository documentation and initial architecture
-- [ ] TypeScript client and API workspaces
-- [ ] API health endpoint
-- [ ] Environment validation and database connection
-- [ ] Basic responsive application shell
+- [ ] TypeScript client and API workspaces (implemented; build verification pending)
+- [ ] API health endpoint (implemented; runtime verification pending)
+- [ ] Environment validation and database connection (implemented; runtime verification pending)
+- [ ] Basic responsive application shell (implemented; browser verification pending)
 
 ## Milestone 1 — Identity and tenant foundation
-- [ ] User registration and sign-in
-- [ ] Organization creation and membership
-- [ ] Server-side tenant resolution
-- [ ] Permission-based authorization
+- [ ] User registration and sign-in (implemented; integration verification pending)
+- [ ] Organization creation and membership (implemented; integration verification pending)
+- [ ] Server-side tenant resolution (implemented; isolation tests pending)
+- [ ] Permission-based authorization (implemented; role matrix tests pending)
 - [ ] Cross-tenant isolation tests
 
 ## Milestone 2 — Vendor lifecycle
-- [ ] Vendor CRUD and server-side pagination
-- [ ] Vendor classification and criticality
+- [ ] Vendor CRUD and server-side pagination (implemented; API verification pending)
+- [ ] Vendor classification and criticality (implemented; scoring review pending)
 - [ ] Lifecycle status and activity timeline
-- [ ] Vendor contact and service records
+- [ ] Vendor contact and service records (basic profile fields implemented; verification pending)
 
 ## Milestone 3 — Assessments and risk
 - [ ] Configurable questionnaires
