@@ -41,7 +41,7 @@ Status is intentionally conservative: unchecked implementation items have not ye
 
 ## Milestone 5 — Operations
 - [ ] Remediation plans and tasks
-- [x] Tenant-scoped incident management and response lifecycle (integration verification pending)
+- [x] Tenant-scoped incident management and response lifecycle (MongoDB-backed API integration tests passing in CI; browser E2E pending)
 - [ ] Background jobs and reminders
 - [ ] Real-time notifications
 - [ ] Audit event search
