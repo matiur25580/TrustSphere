@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { AlertTriangle, ArrowUpRight, CheckCircle2, ClipboardList, RefreshCw, Save, ShieldCheck } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, ClipboardList, RefreshCw, Save, ShieldCheck } from "lucide-react";
 
 type FindingStatus = "open" | "in_progress" | "pending_validation" | "resolved" | "accepted";
 type Finding = {
