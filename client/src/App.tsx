@@ -8,13 +8,6 @@ const metrics = [
   { label: "Control coverage", value: "86%", change: "+4.2% this quarter", icon: ShieldCheck, tone: "green" },
 ];
 
-const vendors = [
-  { name: "Northstar Cloud Services", category: "Cloud infrastructure", score: 82, status: "Review required", initials: "NC", color: "blue" },
-  { name: "Meridian Payment Systems", category: "Payment processing", score: 34, status: "Approved", initials: "MP", color: "violet" },
-  { name: "Apex Data Solutions", category: "Data processing", score: 68, status: "In assessment", initials: "AD", color: "green" },
-  { name: "Vertex IT Partners", category: "Managed IT services", score: 21, status: "Approved", initials: "VI", color: "orange" },
-];
-
 type HealthState = "checking" | "online" | "offline";
 type UserProfile = { id: string; name: string; email: string };
 type OrganizationProfile = { id: string; name: string; slug: string; role: string };
@@ -351,7 +344,7 @@ function Dashboard({ user, organization, organizations, accessToken, onLogout, o
       <p className="nav-label">WORKSPACE</p>
       <nav className="nav-list">
         <a className="nav-item active" href="#overview"><LayoutDashboard size={17}/>Overview</a>
-        <a className="nav-item" href="#vendors"><Users size={17}/>Vendors<span className="nav-count">128</span></a>
+        <a className="nav-item" href="#vendors"><Users size={17}/>Vendors</a>
         <a className="nav-item" href="#assessments"><ClipboardCheck size={17}/>Assessments</a>
         <a className="nav-item" href="#compliance"><FileCheck2 size={17}/>Compliance</a>
         <a className="nav-item" href="#workflows"><Workflow size={17}/>Workflows</a>
