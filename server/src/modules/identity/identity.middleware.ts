@@ -1,4 +1,5 @@
 import type { NextFunction, Request, Response } from "express";
+import { isValidObjectId } from "mongoose";
 import { Membership, Organization } from "./identity.models.js";
 import { verifyAccessToken } from "./identity.security.js";
 
@@ -30,6 +31,10 @@ export async function requireTenant(req: Request, res: Response, next: NextFunct
     const organizationId = req.header("x-organization-id");
     if (!organizationId || !req.auth?.userId) {
       res.status(400).json({ error: { code: "ORGANIZATION_REQUIRED", message: "Select an organization to continue." } });
+      return;
+    }
+    if (!isValidObjectId(organizationId)) {
+      res.status(400).json({ error: { code: "INVALID_ORGANIZATION_ID", message: "The selected organization identifier is invalid." } });
       return;
     }
     const [membership, organization] = await Promise.all([
