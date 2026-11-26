@@ -83,7 +83,7 @@ async function buildReport(organizationId: string, range: ReportRange) {
         pendingReview: { $sum: { $cond: [{ $and: [{ $eq: ["$status", "pending_review"] }, { $or: [{ $eq: ["$expiresAt", null] }, { $gt: ["$expiresAt", generatedAt] }] }] }, 1, 0] } },
         approved: { $sum: { $cond: [{ $and: [{ $eq: ["$status", "approved"] }, { $or: [{ $eq: ["$expiresAt", null] }, { $gt: ["$expiresAt", generatedAt] }] }] }, 1, 0] } },
         rejected: { $sum: { $cond: [{ $eq: ["$status", "rejected"] }, 1, 0] } },
-        expired: { $sum: { $cond: [{ $or: [{ $eq: ["$status", "expired"] }, { $and: [{ $ne: ["$expiresAt", null] }, { $lte: ["$expiresAt", generatedAt] }] }] }, 1, 0] } },
+        expired: { $sum: { $cond: [{ $or: [{ $eq: ["$status", "expired"] }, { $and: [{ $in: ["$status", ["approved", "pending_review"]] }, { $ne: ["$expiresAt", null] }, { $lte: ["$expiresAt", generatedAt] }] }] }, 1, 0] } },
         expiringSoon: { $sum: { $cond: [{ $and: [{ $eq: ["$status", "approved"] }, { $gt: ["$expiresAt", generatedAt] }, { $lte: ["$expiresAt", new Date(generatedAt.getTime() + 30 * 24 * 60 * 60 * 1000)] }] }, 1, 0] } },
       } },
     ]),
