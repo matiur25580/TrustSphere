@@ -68,7 +68,7 @@ before(async () => {
     responses: [{ questionId: "iam-01", answer: "no", comment: "Privileged users do not use MFA.", evidence: [], answeredAt: new Date(), answeredBy: analyst._id }],
   });
   assessmentId = String(assessment._id);
-  await Promise.all([User, Organization, Membership, Vendor, VendorAssessment, Finding].map(model => model.init()));
+  await Promise.all([User, Organization, Membership, Vendor, VendorAssessment, Finding, ControlImplementation].map(model => model.init()));
 });
 
 after(async () => {
