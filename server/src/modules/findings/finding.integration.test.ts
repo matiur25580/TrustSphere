@@ -160,6 +160,11 @@ test("findings API enforces tenant boundaries, RBAC, idempotency and independent
   const complianceSummary = await api(analystToken).get("/api/v1/compliance/summary");
   assert.equal(complianceSummary.status, 200);
   assert.equal(complianceSummary.body.data.implemented, 1);
+  assert.equal(complianceSummary.body.data.not_started, 9);
+  assert.equal(complianceSummary.body.data.coveragePercent, 10);
+  const controlEvents = await api(analystToken).get("/api/v1/compliance/controls/access-mfa/events");
+  assert.equal(controlEvents.status, 200);
+  assert.equal(controlEvents.body.data[0].action, "implementation_updated");
   const otherTenantControls = await api(outsiderToken, otherOrganizationId).get("/api/v1/compliance/controls");
   assert.equal(otherTenantControls.status, 200);
   assert.equal(otherTenantControls.body.data[0].implementation.status, "not_started");
