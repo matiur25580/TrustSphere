@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { FindingsWorkspace } from "./FindingsWorkspace";
-import { Activity, ArrowUpRight, Bell, Building2, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, CircleAlert, ClipboardCheck, Eye, EyeOff, FileCheck2, LayoutDashboard, LockKeyhole, LogOut, Mail, Pencil, Plus, Search, Shield, ShieldCheck, Trash2, Users, Workflow, X } from "lucide-react";
+import { AlertTriangle, Activity, ArrowUpRight, Bell, Building2, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, CircleAlert, ClipboardCheck, Eye, EyeOff, FileCheck2, LayoutDashboard, LockKeyhole, LogOut, Mail, Pencil, Plus, Search, Shield, ShieldCheck, Trash2, Users, Workflow, X } from "lucide-react";
 
 const metrics = [
   { label: "Active vendors", value: "128", change: "+8 this month", icon: Building2, tone: "blue" },
@@ -545,6 +545,7 @@ function Dashboard({ user, organization, organizations, accessToken, onLogout, o
         <a className="nav-item active" href="#overview"><LayoutDashboard size={17}/>Overview</a>
         <a className="nav-item" href="#vendors"><Users size={17}/>Vendors</a>
         <a className="nav-item" href="#assessments"><ClipboardCheck size={17}/>Assessments</a>
+        <a className="nav-item" href="#findings"><AlertTriangle size={17}/>Findings</a>
         <a className="nav-item" href="#compliance"><FileCheck2 size={17}/>Compliance</a>
         <a className="nav-item" href="#workflows"><Workflow size={17}/>Workflows</a>
         <a className="nav-item" href="#activity"><Activity size={17}/>Activity</a>
