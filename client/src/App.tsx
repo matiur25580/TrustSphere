@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { FindingsWorkspace } from "./FindingsWorkspace";
 import { ComplianceWorkspace } from "./ComplianceWorkspace";
 import { ReportsWorkspace } from "./ReportsWorkspace";
-import { AlertTriangle, Activity, ArrowUpRight, Bell, Building2, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, CircleAlert, ClipboardCheck, Eye, EyeOff, FileCheck2, LayoutDashboard, LockKeyhole, LogOut, Mail, Pencil, Plus, Search, Shield, ShieldCheck, Trash2, Users, Workflow, X } from "lucide-react";
+import { AlertTriangle, Activity, ArrowUpRight, Bell, Building2, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ClipboardCheck, Eye, EyeOff, FileCheck2, LayoutDashboard, LockKeyhole, LogOut, Mail, Pencil, Plus, Search, Shield, ShieldCheck, Trash2, Users, Workflow, X } from "lucide-react";
 
 
 
