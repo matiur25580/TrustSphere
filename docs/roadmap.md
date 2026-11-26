@@ -23,11 +23,12 @@ Status is intentionally conservative: unchecked implementation items have not ye
 - [ ] Vendor contact and service records (basic profile fields implemented; verification pending)
 
 ## Milestone 3 — Assessments and risk
-- [ ] Configurable questionnaires
-- [ ] Answer submission and review
-- [ ] Versioned, explainable risk scoring
-- [ ] Findings and risk history
-- [ ] Human approval workflow
+- [ ] Configurable questionnaire authoring (baseline v1 template snapshot implemented; authoring UI pending)
+- [x] Answer submission and owner/admin review workflow (runtime verification pending)
+- [x] Versioned template snapshot and explainable category-weighted scoring (scoring unit tests added; full API verification pending)
+- [ ] Findings and remediation tracking linked to assessment results
+- [x] Human approval/rejection workflow (integration verification pending)
+- [x] Append-only assessment event history at API level (tamper resistance and transaction boundary pending)
 
 ## Milestone 4 — Compliance and evidence
 - [ ] Framework and control library
