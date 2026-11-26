@@ -4,7 +4,7 @@
 
 TrustSphere is a multi-tenant SaaS platform concept for managing third-party vendors, assessing operational and cybersecurity risks, organizing compliance evidence, and coordinating remediation workflows.
 
-> **Project status:** Identity, tenant context, vendor management, and the first vendor security assessment workflow are implemented in the repository. Full runtime/API integration and cross-tenant security verification remain pending; this is not a production-certified system.
+> **Project status:** Identity, tenant context, vendor management, vendor security assessments, and the first findings/remediation workflow are implemented in the repository. Full runtime/API integration and cross-tenant security verification remain pending; this is not a production-certified system.
 
 ## Product goals
 
@@ -83,7 +83,7 @@ Set a unique `JWT_ACCESS_SECRET` in `server/.env` (at least 32 characters). For 
 
 Passwords are hashed with bcrypt. Refresh tokens are opaque, stored as hashes, rotated with an atomic one-time update, and sent in HttpOnly SameSite cookies. The API includes membership-based tenant context and owner/admin/analyst/viewer permission middleware. See [Identity module notes](server/src/modules/identity/README.md) and the [identity security test plan](server/src/modules/identity/identity.test-plan.md).
 
-The React client includes login and organization registration screens, in-memory access-token handling, refresh-cookie session restoration, a protected dashboard view, sign-out, organization switching, and a live tenant-context check. The authenticated dashboard includes a vendor directory and an assessment workspace with versioned baseline questionnaires, answer capture, evidence references, risk breakdowns, and owner/admin review. The access token is deliberately not persisted in localStorage; the browser uses the HttpOnly refresh cookie to restore sessions.
+The React client includes login and organization registration screens, in-memory access-token handling, refresh-cookie session restoration, a protected dashboard view, sign-out, organization switching, and a live tenant-context check. The authenticated dashboard includes a vendor directory, assessment workspace, and findings/remediation workspace with versioned baseline questionnaires, answer capture, evidence references, risk breakdowns, remediation ownership, due dates, and independent owner/admin validation. The access token is deliberately not persisted in localStorage; the browser uses the HttpOnly refresh cookie to restore sessions.
 
 **Important:** this is an evolving portfolio implementation, not a security certification. Automated API/security integration tests, audit-event tamper resistance, invitations, MFA, configurable template authoring, private object-storage integration, and production deployment hardening remain future work. Registration currently uses compensating cleanup for partial failures; it is not a multi-document MongoDB transaction. Dashboard analytics remain illustrative sample data, while the vendor directory reads and writes persisted records.
 
@@ -119,7 +119,7 @@ Evidence entries are metadata and opaque private-storage keys only. This reposit
 
 See [assessment module notes](server/src/modules/assessments/README.md) and [assessment security test plan](server/src/modules/assessments/assessment.test-plan.md).
 
-### Run assessment scoring tests
+### Findings & Remediation API\n\nAll endpoints require an authenticated active tenant.\n\n- `GET /api/v1/findings/summary` — tenant-scoped operational counts, overdue and critical findings.\n- `GET /api/v1/findings?page=1&limit=10&status=&severity=&priority=&vendorId=&assessmentId=` — filtered, paginated findings.\n- `POST /api/v1/findings/from-assessment/:assessmentId` — idempotently generate findings from No/Partial answers in a submitted assessment.\n- `POST /api/v1/findings` — create a finding for an existing No/Partial response.\n- `GET /api/v1/findings/:id` — finding details and activity history.\n- `PATCH /api/v1/findings/:id` — update remediation plan, owner, due date and classification.\n- `POST /api/v1/findings/:id/transition` — start work, submit for validation, independently validate/reopen, or accept residual risk.\n\nThe deterministic severity/priority classifier is a triage aid, not a regulatory severity decision. Finding generation is idempotent per tenant/assessment/question. Owners/admins validate remediation, and the finding creator cannot validate their own work. Activity events are append-only through the API, but transactions and tamper-proof audit storage remain future hardening. See [findings module notes](server/src/modules/findings/README.md) and [findings security test plan](server/src/modules/findings/finding.test-plan.md).\n\n### Run assessment and findings scoring tests
 
 From the repository root, run `npm run test --workspace server`. These are pure scoring unit tests; they do not replace API, MongoDB, or cross-tenant integration tests.
 
