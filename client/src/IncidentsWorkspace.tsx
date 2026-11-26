@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
-import { AlertTriangle, CheckCircle2, Clock3, Plus, RefreshCw, Save, ShieldAlert, UserRound } from "lucide-react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { AlertTriangle, CheckCircle2, Clock3, Plus, RefreshCw, Save, ShieldAlert } from "lucide-react";
 import "./IncidentsWorkspace.css";
 
 type Status = "reported" | "triaged" | "investigating" | "contained" | "recovering" | "resolved" | "closed";
@@ -57,7 +57,7 @@ export function IncidentsWorkspace({ accessToken, organizationId, canWrite, canR
 
   useEffect(() => { void load(); }, [load]);
 
-  async function createIncident(event: React.FormEvent<HTMLFormElement>) {
+  async function createIncident(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setBusy(true); setError(""); setNotice("");
     try {
       const created = await request("/api/v1/incidents", { method: "POST", body: JSON.stringify(form) });
