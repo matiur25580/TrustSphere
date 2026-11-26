@@ -1,14 +1,10 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { FindingsWorkspace } from "./FindingsWorkspace";
 import { ComplianceWorkspace } from "./ComplianceWorkspace";
+import { ReportsWorkspace } from "./ReportsWorkspace";
 import { AlertTriangle, Activity, ArrowUpRight, Bell, Building2, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, CircleAlert, ClipboardCheck, Eye, EyeOff, FileCheck2, LayoutDashboard, LockKeyhole, LogOut, Mail, Pencil, Plus, Search, Shield, ShieldCheck, Trash2, Users, Workflow, X } from "lucide-react";
 
-const metrics = [
-  { label: "Active vendors", value: "128", change: "+8 this month", icon: Building2, tone: "blue" },
-  { label: "Assessments in progress", value: "24", change: "7 awaiting review", icon: ClipboardCheck, tone: "violet" },
-  { label: "High-risk vendors", value: "09", change: "3 need attention", icon: CircleAlert, tone: "amber" },
-  { label: "Control coverage", value: "86%", change: "+4.2% this quarter", icon: ShieldCheck, tone: "green" },
-];
+
 
 type HealthState = "checking" | "online" | "offline";
 type UserProfile = { id: string; name: string; email: string };
@@ -548,6 +544,7 @@ function Dashboard({ user, organization, organizations, accessToken, onLogout, o
         <a className="nav-item" href="#assessments"><ClipboardCheck size={17}/>Assessments</a>
         <a className="nav-item" href="#findings"><AlertTriangle size={17}/>Findings</a>
         <a className="nav-item" href="#compliance"><FileCheck2 size={17}/>Compliance</a>
+        <a className="nav-item" href="#reports"><Activity size={17}/>Reports</a>
         <a className="nav-item" href="#workflows"><Workflow size={17}/>Workflows</a>
         <a className="nav-item" href="#activity"><Activity size={17}/>Activity</a>
       </nav>
@@ -558,22 +555,13 @@ function Dashboard({ user, organization, organizations, accessToken, onLogout, o
     </aside>
     <main className="main-content">
       <header className="topbar"><div className="breadcrumbs">{organization.name} <span>/</span> <strong>Overview</strong></div><div className="top-actions">{organizations.length > 1 && <select className="organization-select" aria-label="Switch organization" value={organization.id} onChange={event => { const next = organizations.find(item => item.id === event.target.value); if (next) onOrganizationChange(next); }}><option value="" disabled>Workspace</option>{organizations.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select>}<label className="search-box"><Search size={16}/><input aria-label="Search workspace" placeholder="Search anything..."/><kbd>⌘ K</kbd></label><button className="icon-button" aria-label="Notifications"><Bell size={18}/><i/></button><div className="top-avatar">{user.name.split(" ").map(part => part[0]).slice(0,2).join("").toUpperCase()}</div></div></header>
-      <section className="page-heading" id="overview"><div><p className="eyebrow">{organization.name.toUpperCase()} · {tenantState === "verified" ? "TENANT VERIFIED" : tenantState === "checking" ? "VERIFYING ACCESS" : "ACCESS CHECK FAILED"} · LIVE VENDOR DIRECTORY · ILLUSTRATIVE ANALYTICS</p><h1>Risk & compliance overview <span>✦</span></h1><p className="subtitle">A clear view of vendor exposure, assessments, and compliance activity.</p></div><button className="primary-button"><ArrowUpRight size={16}/> Generate report</button></section>
-      <section className="metric-grid" aria-label="Key metrics">{metrics.map(({label,value,change,icon:Icon,tone})=><article className="metric-card" key={label}><div className="metric-top"><span>{label}</span><span className={`metric-icon ${tone}`}><Icon size={18}/></span></div><strong className="metric-value">{value}</strong><span className="metric-change">{change}</span></article>)}</section>
-      <section className="content-grid">
-        <article className="panel"><div className="panel-heading"><div><h2>Risk exposure</h2><p>Vendor risk distribution across your portfolio</p></div><button className="subtle-button">Last 30 days <ChevronDown size={14}/></button></div><div className="risk-summary"><div className="donut"><div><strong>128</strong><span>Total vendors</span></div></div><div className="legend"><span><i className="dot critical"/>Critical <strong>9</strong></span><span><i className="dot high"/>High <strong>18</strong></span><span><i className="dot medium"/>Medium <strong>42</strong></span><span><i className="dot low"/>Low <strong>59</strong></span></div></div><div className="panel-foot"><span><Activity size={15}/> Illustrative sample data</span><a href="#vendors">View vendors <ArrowUpRight size={14}/></a></div></article>
-        <article className="panel"><div className="panel-heading"><div><h2>Needs your attention</h2><p>Items requiring a decision or follow-up</p></div><span className="attention-count">4</span></div>
-          <div className="action-item"><span className="action-icon amber"><CircleAlert size={17}/></span><span><strong>Vendor review overdue</strong><small>Northstar Cloud Services · 3 days</small></span><ArrowUpRight size={15}/></div>
-          <div className="action-item"><span className="action-icon violet"><FileCheck2 size={17}/></span><span><strong>Evidence awaiting approval</strong><small>ISO 27001 control A.5.19 · 1 day</small></span><ArrowUpRight size={15}/></div>
-          <div className="action-item"><span className="action-icon blue"><ClipboardCheck size={17}/></span><span><strong>Assessment needs review</strong><small>Apex Data Solutions · 2 days</small></span><ArrowUpRight size={15}/></div>
-          <div className="action-item"><span className="action-icon green"><CheckCircle2 size={17}/></span><span><strong>Remediation update</strong><small>Quarterly access review · Today</small></span><ArrowUpRight size={15}/></div>
-        </article>
-      </section>
+      <section className="page-heading" id="overview"><div><p className="eyebrow">{organization.name.toUpperCase()} · {tenantState === "verified" ? "TENANT VERIFIED" : tenantState === "checking" ? "VERIFYING ACCESS" : "ACCESS CHECK FAILED"} · LIVE TENANT DATA · RISK INTELLIGENCE</p><h1>Risk & compliance overview <span>✦</span></h1><p className="subtitle">A clear view of vendor exposure, assessments, and compliance activity.</p></div><a className="primary-button" href="#reports"><ArrowUpRight size={16}/> Generate report</a></section>
       <VendorDirectory accessToken={accessToken} organizationId={organization.id} canWrite={["owner", "admin", "analyst"].includes(organization.role)}/>
       <AssessmentWorkspace accessToken={accessToken} organizationId={organization.id} canWrite={["owner", "admin", "analyst"].includes(organization.role)} canReview={["owner", "admin"].includes(organization.role)}/>
       <FindingsWorkspace accessToken={accessToken} organizationId={organization.id} canWrite={["owner", "admin", "analyst"].includes(organization.role)} canReview={["owner", "admin"].includes(organization.role)}/>
       <ComplianceWorkspace accessToken={accessToken} organizationId={organization.id} canWrite={["owner", "admin", "analyst"].includes(organization.role)} canReview={["owner", "admin"].includes(organization.role)}/>
-      <footer className="footer"><span>© 2026 TrustSphere · Portfolio demo</span><span><i className={apiState === "online" ? "pulse-dot" : "pulse-dot offline"}/> API {apiState === "checking" ? "checking" : apiState} · Tenant {tenantState} · Sample data only</span></footer>
+      <ReportsWorkspace accessToken={accessToken} organizationId={organization.id}/>
+      <footer className="footer"><span>© 2026 TrustSphere · Portfolio demo</span><span><i className={apiState === "online" ? "pulse-dot" : "pulse-dot offline"}/> API {apiState === "checking" ? "checking" : apiState} · Tenant {tenantState} · Live organization reports</span></footer>
     </main>
   </div>;
 }
