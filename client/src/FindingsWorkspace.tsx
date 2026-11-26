@@ -9,7 +9,8 @@ type Finding = {
   dueDate: string | null; resolutionNote: string; acceptedReason: string;
   sourceAnswer: "no" | "partial"; vendorId: { _id: string; name: string } | string;
   assessmentId: { _id: string; title: string } | string;
-  events?: Array<{ _id: string; action: string; occurredAt: string; details?: Record<string, unknown> }>;\n  updatedAt?: string;
+  events?: Array<{ _id: string; action: string; occurredAt: string; details?: Record<string, unknown> }>;
+  updatedAt?: string;
 };
 type AssessmentOption = { _id: string; title: string; status: string };
 
