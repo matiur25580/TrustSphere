@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { FindingsWorkspace } from "./FindingsWorkspace";
+import { IncidentsWorkspace } from "./IncidentsWorkspace";
 import { ComplianceWorkspace } from "./ComplianceWorkspace";
 import { ReportsWorkspace } from "./ReportsWorkspace";
 import { AlertTriangle, Activity, ArrowUpRight, Bell, Building2, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ClipboardCheck, Eye, EyeOff, FileCheck2, LayoutDashboard, LockKeyhole, LogOut, Mail, Pencil, Plus, Search, Shield, ShieldCheck, Trash2, Users, Workflow, X } from "lucide-react";
@@ -543,6 +544,7 @@ function Dashboard({ user, organization, organizations, accessToken, onLogout, o
         <a className="nav-item" href="#vendors"><Users size={17}/>Vendors</a>
         <a className="nav-item" href="#assessments"><ClipboardCheck size={17}/>Assessments</a>
         <a className="nav-item" href="#findings"><AlertTriangle size={17}/>Findings</a>
+        <a className="nav-item" href="#incidents"><ShieldCheck size={17}/>Incidents</a>
         <a className="nav-item" href="#compliance"><FileCheck2 size={17}/>Compliance</a>
         <a className="nav-item" href="#reports"><Activity size={17}/>Reports</a>
         <a className="nav-item" href="#workflows"><Workflow size={17}/>Workflows</a>
@@ -560,6 +562,7 @@ function Dashboard({ user, organization, organizations, accessToken, onLogout, o
       <VendorDirectory accessToken={accessToken} organizationId={organization.id} canWrite={["owner", "admin", "analyst"].includes(organization.role)}/>
       <AssessmentWorkspace accessToken={accessToken} organizationId={organization.id} canWrite={["owner", "admin", "analyst"].includes(organization.role)} canReview={["owner", "admin"].includes(organization.role)}/>
       <FindingsWorkspace accessToken={accessToken} organizationId={organization.id} canWrite={["owner", "admin", "analyst"].includes(organization.role)} canReview={["owner", "admin"].includes(organization.role)}/>
+      <IncidentsWorkspace accessToken={accessToken} organizationId={organization.id} canWrite={["owner", "admin", "analyst"].includes(organization.role)} canReview={["owner", "admin"].includes(organization.role)}/>
       <ComplianceWorkspace accessToken={accessToken} organizationId={organization.id} canWrite={["owner", "admin", "analyst"].includes(organization.role)} canReview={["owner", "admin"].includes(organization.role)}/>
       <footer className="footer"><span>© 2026 TrustSphere · Portfolio demo</span><span><i className={apiState === "online" ? "pulse-dot" : "pulse-dot offline"}/> API {apiState === "checking" ? "checking" : apiState} · Tenant {tenantState} · Live organization reports</span></footer>
     </main>
