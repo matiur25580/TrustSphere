@@ -43,8 +43,8 @@ export function IncidentsWorkspace({ accessToken, organizationId, canWrite, canR
     setLoading(true); setError("");
     try {
       const query = `/api/v1/incidents?limit=50${statusFilter ? `&status=${statusFilter}` : ""}${severityFilter ? `&severity=${severityFilter}` : ""}`;
-      const [incidentData, vendorData, findingData] = await Promise.all([
-        request(query), request("/api/v1/vendors?limit=50"), request("/api/v1/findings?limit=50"),
+      const [incidentData, vendorData, findingData, memberData] = await Promise.all([
+        request(query), request("/api/v1/vendors?limit=50"), request("/api/v1/findings?limit=50"), request("/api/v1/incidents/members"),
       ]);
       setItems(incidentData as Incident[]);
       setVendors(vendorData as Option[]);
