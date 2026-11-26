@@ -54,7 +54,11 @@ evidenceRouter.post("/", requirePermission("compliance:write"), uploadLimiter, (
     try {
       const controlId = typeof req.body.controlId === "string" ? req.body.controlId : "";
       const expiresAtRaw = typeof req.body.expiresAt === "string" ? req.body.expiresAt : "";
-      const expiresAt = expiresAtRaw ? new Date(expiresAtRaw) : null;
+      const expiryValidation = expiresAtRaw ? z.string().datetime().safeParse(expiresAtRaw) : null;
+      const expiresAt = expiresAtRaw && expiryValidation?.success ? new Date(expiresAtRaw) : null;
+      if (expiresAtRaw && !expiryValidation?.success) {
+        res.status(400).json({ error: { code: "INVALID_EXPIRY", message: "Expiry must be a valid ISO 8601 datetime." } }); return;
+      }
       if (!SUPPORTED_CONTROL_IDS.includes(controlId)) {
         res.status(400).json({ error: { code: "INVALID_CONTROL", message: "Choose a valid control from the catalog." } }); return;
       }
@@ -105,7 +109,7 @@ evidenceRouter.get("/", requirePermission("compliance:read"), async (req, res, n
     const filter: Record<string, unknown> = { organizationId: req.tenant!.organizationId };
     if (controlId) filter.controlId = controlId;
     if (status) filter.status = status;
-    await ComplianceEvidence.updateMany({ organizationId: req.tenant!.organizationId, status: "approved", expiresAt: { $lte: new Date(), $ne: null } }, { $set: { status: "expired" } });
+    await ComplianceEvidence.updateMany({ organizationId: req.tenant!.organizationId, status: { $in: ["approved", "pending_review"] }, expiresAt: { $lte: new Date(), $ne: null } }, { $set: { status: "expired" } });
     const records = await ComplianceEvidence.find(filter).sort({ createdAt: -1 }).limit(100)
       .select("-storageKey -__v").lean();
     res.json({ data: records });
@@ -149,7 +153,7 @@ evidenceRouter.get("/:id/download", requirePermission("compliance:read"), async 
     if (evidence.status !== "approved" && String(evidence.uploadedBy) !== req.auth!.userId && !REVIEWER_ROLES.includes(req.tenant!.role)) {
       res.status(403).json({ error: { code: "EVIDENCE_NOT_APPROVED", message: "Only the uploader, an organization reviewer, or members with approved evidence access can download this file." } }); return;
     }
-    if (evidence.expiresAt && evidence.expiresAt.getTime() <= Date.now() && evidence.status === "approved") {
+    if (evidence.expiresAt && evidence.expiresAt.getTime() <= Date.now() && ["approved", "pending_review"].includes(evidence.status)) {
       evidence.status = "expired"; await evidence.save();
     }
     if (evidence.status === "expired") { res.status(410).json({ error: { code: "EVIDENCE_EXPIRED", message: "This evidence has expired and cannot be downloaded." } }); return; }
