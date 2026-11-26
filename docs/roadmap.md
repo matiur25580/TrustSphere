@@ -41,7 +41,7 @@ Status is intentionally conservative: unchecked implementation items have not ye
 
 ## Milestone 5 — Operations
 - [ ] Remediation plans and tasks
-- [ ] Incident management
+- [x] Tenant-scoped incident management and response lifecycle (integration verification pending)
 - [ ] Background jobs and reminders
 - [ ] Real-time notifications
 - [ ] Audit event search
@@ -69,4 +69,15 @@ Status is intentionally conservative: unchecked implementation items have not ye
 - [x] Daily activity trends and operational attention queues
 - [x] CSV export and print-optimized PDF workflow (browser print dialog)
 - [ ] Scheduled report delivery and saved report definitions
+
+## Milestone 9 — Incident management & security operations
+- [x] Tenant-scoped incident reporting, classification and severity
+- [x] Incident assignment to active organization members
+- [x] Vendor and finding relationships with tenant validation
+- [x] Investigation, containment, recovery and resolution workflow
+- [x] Owner/admin closure and reopening controls
+- [x] Investigation notes and activity timeline (API append-only; tamper resistance pending)
+- [x] Incident summary, filters and paginated queue
+- [ ] Alert ingestion, SLA timers, on-call routing and notification delivery
+- [ ] Forensic evidence chain-of-custody and automated response playbooks
 
