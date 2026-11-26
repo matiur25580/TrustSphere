@@ -68,6 +68,23 @@ The Vite client runs at `http://localhost:5173` and proxies `/api` requests to t
 
 The current dashboard is a UI foundation with clearly illustrative sample metrics and vendor rows; those values are not connected to persisted business data yet.
 
+### Authentication configuration
+
+Set a unique `JWT_ACCESS_SECRET` in `server/.env` (at least 32 characters). For example, generate one with `openssl rand -base64 48`. Keep this secret private and never commit it.
+
+### Identity API (implemented foundation)
+
+- `POST /api/v1/auth/register` — create a user, organization, and owner membership.
+- `POST /api/v1/auth/login` — authenticate and return a short-lived access token and organization memberships.
+- `POST /api/v1/auth/refresh` — rotate the HttpOnly refresh-session cookie.
+- `POST /api/v1/auth/logout` — revoke the current refresh session.
+- `GET /api/v1/auth/me` — return the authenticated user and organization memberships.
+- `GET /api/v1/tenant/context` — example tenant-protected endpoint; requires a bearer access token and an `x-organization-id` header.
+
+Passwords are hashed with bcrypt. Refresh tokens are opaque, stored as hashes, rotated with an atomic one-time update, and sent in HttpOnly SameSite cookies. The API includes membership-based tenant context and owner/admin/analyst/viewer permission middleware. See [Identity module notes](server/src/modules/identity/README.md) and the [identity security test plan](server/src/modules/identity/identity.test-plan.md).
+
+**Important:** the identity backend is an initial implementation, not a security certification. Frontend auth screens, automated integration tests, audit logging, invitations, MFA, and production deployment hardening remain future work. Registration currently uses compensating cleanup for partial failures; it is not a multi-document MongoDB transaction.
+
 ## Engineering principles
 
 1. **Tenant isolation is enforced server-side.** Client-side filtering is never a security boundary.
