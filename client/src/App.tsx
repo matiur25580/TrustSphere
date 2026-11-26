@@ -572,7 +572,7 @@ function Dashboard({ user, organization, organizations, accessToken, onLogout, o
       <VendorDirectory accessToken={accessToken} organizationId={organization.id} canWrite={["owner", "admin", "analyst"].includes(organization.role)}/>
       <AssessmentWorkspace accessToken={accessToken} organizationId={organization.id} canWrite={["owner", "admin", "analyst"].includes(organization.role)} canReview={["owner", "admin"].includes(organization.role)}/>
       <FindingsWorkspace accessToken={accessToken} organizationId={organization.id} canWrite={["owner", "admin", "analyst"].includes(organization.role)} canReview={["owner", "admin"].includes(organization.role)}/>
-      <ComplianceWorkspace accessToken={accessToken} organizationId={organization.id} canWrite={["owner", "admin", "analyst"].includes(organization.role)}/>
+      <ComplianceWorkspace accessToken={accessToken} organizationId={organization.id} canWrite={["owner", "admin", "analyst"].includes(organization.role)} canReview={["owner", "admin"].includes(organization.role)}/>
       <footer className="footer"><span>© 2026 TrustSphere · Portfolio demo</span><span><i className={apiState === "online" ? "pulse-dot" : "pulse-dot offline"}/> API {apiState === "checking" ? "checking" : apiState} · Tenant {tenantState} · Sample data only</span></footer>
     </main>
   </div>;
