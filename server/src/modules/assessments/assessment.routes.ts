@@ -148,7 +148,9 @@ assessmentRouter.post("/:id/submit", requirePermission("risk:write"), async (req
     const responseMap = new Map(assessment.responses.map(response => [response.questionId, response.answer]));
     const missing = snapshot.questions.filter(question => question.required && !responseMap.has(question.id));
     if (missing.length) { res.status(400).json({ error: { code: "REQUIRED_RESPONSES_MISSING", message: "Complete every required question before submitting.", details: { missingQuestionIds: missing.map(question => question.id) } } }); return; }
-    const scored = scoreResponses(assessment.responses.map(response => ({ questionId: response.questionId, answer: response.answer })), snapshot.questions);
+    const scoreableResponses = assessment.responses.filter(response => response.answer !== "not_applicable");
+    if (scoreableResponses.length === 0) { res.status(400).json({ error: { code: "NO_SCORABLE_RESPONSES", message: "At least one question must have a scored answer; an all-not-applicable assessment cannot produce a risk rating." } }); return; }
+    const scored = scoreResponses(scoreableResponses.map(response => ({ questionId: response.questionId, answer: response.answer })), snapshot.questions);
     assessment.scoreModelVersion = SCORE_MODEL_VERSION;
     assessment.riskScore = scored.score;
     assessment.riskBand = scored.band;
