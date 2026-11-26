@@ -313,6 +313,200 @@ function VendorDirectory({ accessToken, organizationId, canWrite }: { accessToke
   </section>;
 }
 
+
+type AssessmentQuestion = { id: string; category: string; prompt: string; weight: number; required: boolean };
+type AssessmentResponse = { questionId: string; answer: "yes" | "partial" | "no" | "not_applicable"; comment?: string; evidence?: { storageKey: string; fileName: string; mimeType: "application/pdf"; sizeBytes: number; sha256: string }[] };
+type AssessmentRecord = {
+  _id: string; title: string; status: "draft" | "in_progress" | "submitted" | "approved" | "rejected";
+  vendorId: string | { _id: string; name: string; category?: string };
+  riskScore: number | null; riskBand: string | null; scoreModelVersion?: string;
+  templateSnapshot: { title: string; version: number; questions: AssessmentQuestion[] };
+  responses: AssessmentResponse[];
+  categoryBreakdown?: { category: string; score: number; answeredWeight: number; totalWeight: number }[];
+  reviewerComment?: string;
+};
+type VendorOption = { _id: string; name: string; category: string };
+type AnswerDraft = { answer: AssessmentResponse["answer"]; comment: string; storageKey: string; fileName: string; sha256: string };
+const blankAnswer: AnswerDraft = { answer: "yes", comment: "", storageKey: "", fileName: "", sha256: "" };
+
+function AssessmentWorkspace({ accessToken, organizationId, canWrite, canReview }: { accessToken: string; organizationId: string; canWrite: boolean; canReview: boolean }) {
+  const [items, setItems] = useState<AssessmentRecord[]>([]);
+  const [vendors, setVendors] = useState<VendorOption[]>([]);
+  const [selected, setSelected] = useState<AssessmentRecord | null>(null);
+  const [answers, setAnswers] = useState<Record<string, AnswerDraft>>({});
+  const [vendorId, setVendorId] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [refreshKey, setRefreshKey] = useState(0);
+  const headers = { Authorization: `Bearer ${accessToken}`, "x-organization-id": organizationId };
+
+  useEffect(() => {
+    const controller = new AbortController();
+    async function load() {
+      setLoading(true);
+      setError("");
+      try {
+        const [assessmentResponse, vendorResponse] = await Promise.all([
+          fetch(`/api/v1/assessments?limit=30${statusFilter ? `&status=${statusFilter}` : ""}`, { headers, signal: controller.signal }),
+          fetch("/api/v1/vendors?limit=50", { headers, signal: controller.signal }),
+        ]);
+        const [assessmentPayload, vendorPayload] = await Promise.all([assessmentResponse.json(), vendorResponse.json()]) as [
+          { data?: AssessmentRecord[]; error?: { message?: string } },
+          { data?: VendorOption[]; error?: { message?: string } }
+        ];
+        if (!assessmentResponse.ok) throw new Error(assessmentPayload.error?.message || "Unable to load assessments.");
+        if (!vendorResponse.ok) throw new Error(vendorPayload.error?.message || "Unable to load vendors.");
+        setItems(assessmentPayload.data ?? []);
+        setVendors(vendorPayload.data ?? []);
+        if (!vendorId && vendorPayload.data?.[0]) setVendorId(vendorPayload.data[0]._id);
+      } catch (cause) {
+        if (!(cause instanceof DOMException && cause.name === "AbortError")) setError(cause instanceof Error ? cause.message : "Unable to load assessment workspace.");
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    }
+    void load();
+    return () => controller.abort();
+  }, [accessToken, organizationId, statusFilter, refreshKey]);
+
+  async function openAssessment(id: string) {
+    setBusy(true);
+    setError("");
+    try {
+      const response = await fetch(`/api/v1/assessments/${id}`, { headers });
+      const payload = await response.json() as { data?: AssessmentRecord; error?: { message?: string } };
+      if (!response.ok || !payload.data) throw new Error(payload.error?.message || "Unable to open assessment.");
+      setSelected(payload.data);
+      const next: Record<string, AnswerDraft> = {};
+      for (const answer of payload.data.responses ?? []) {
+        const evidence = answer.evidence?.[0];
+        next[answer.questionId] = {
+          answer: answer.answer, comment: answer.comment ?? "", storageKey: evidence?.storageKey ?? "",
+          fileName: evidence?.fileName ?? "", sha256: evidence?.sha256 ?? "",
+        };
+      }
+      setAnswers(next);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to open assessment.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function createAssessment() {
+    if (!vendorId) return;
+    setBusy(true);
+    setError("");
+    try {
+      const response = await fetch("/api/v1/assessments", { method: "POST", headers: { ...headers, "Content-Type": "application/json" }, body: JSON.stringify({ vendorId }) });
+      const payload = await response.json() as { data?: AssessmentRecord; error?: { message?: string } };
+      if (!response.ok || !payload.data) throw new Error(payload.error?.message || "Unable to create assessment.");
+      setRefreshKey(value => value + 1);
+      await openAssessment(payload.data._id);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to create assessment.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  function updateAnswer(questionId: string, patch: Partial<AnswerDraft>) {
+    setAnswers(current => ({ ...current, [questionId]: { ...(current[questionId] ?? blankAnswer), ...patch } }));
+  }
+  async function saveResponses(submit: boolean) {
+    if (!selected) return;
+    setBusy(true);
+    setError("");
+    try {
+      const responses: AssessmentResponse[] = selected.templateSnapshot.questions.map(question => {
+        const answer = answers[question.id] ?? blankAnswer;
+        const evidence = answer.storageKey.trim() ? [{
+          storageKey: answer.storageKey.trim(), fileName: answer.fileName.trim() || "evidence.pdf",
+          mimeType: "application/pdf" as const, sizeBytes: 1, sha256: answer.sha256.trim(),
+        }] : [];
+        return { questionId: question.id, answer: answer.answer, comment: answer.comment, ...(evidence.length ? { evidence } : {}) };
+      }).filter(item => Boolean(answers[item.questionId]));
+      const saveResponse = await fetch(`/api/v1/assessments/${selected._id}/responses`, {
+        method: "PUT", headers: { ...headers, "Content-Type": "application/json" }, body: JSON.stringify({ responses }),
+      });
+      const savedPayload = await saveResponse.json() as { error?: { message?: string } };
+      if (!saveResponse.ok) throw new Error(savedPayload.error?.message || "Unable to save responses.");
+      if (submit) {
+        const submitResponse = await fetch(`/api/v1/assessments/${selected._id}/submit`, { method: "POST", headers });
+        const submitPayload = await submitResponse.json() as { error?: { message?: string } };
+        if (!submitResponse.ok) throw new Error(submitPayload.error?.message || "Unable to submit assessment.");
+      }
+      await openAssessment(selected._id);
+      setRefreshKey(value => value + 1);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to save assessment.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function review(decision: "approved" | "rejected") {
+    if (!selected) return;
+    const comment = window.prompt(`Optional reviewer comment for ${decision}:`) ?? "";
+    setBusy(true);
+    setError("");
+    try {
+      const response = await fetch(`/api/v1/assessments/${selected._id}/review`, {
+        method: "POST", headers: { ...headers, "Content-Type": "application/json" }, body: JSON.stringify({ decision, comment }),
+      });
+      const payload = await response.json() as { error?: { message?: string } };
+      if (!response.ok) throw new Error(payload.error?.message || "Unable to record review decision.");
+      await openAssessment(selected._id);
+      setRefreshKey(value => value + 1);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to review assessment.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return <section className="panel assessment-panel" id="assessments">
+    <div className="panel-heading"><div><h2>Vendor security assessments</h2><p>Versioned questionnaires · weighted risk scoring · human review</p></div><span className="assessment-version">Baseline v1</span></div>
+    <div className="assessment-toolbar">
+      {canWrite && <><select aria-label="Choose vendor for assessment" value={vendorId} onChange={event => setVendorId(event.target.value)}><option value="">Select vendor</option>{vendors.map(vendor => <option key={vendor._id} value={vendor._id}>{vendor.name}</option>)}</select><button className="primary-button" type="button" disabled={!vendorId || busy} onClick={() => void createAssessment()}><Plus size={14}/> New assessment</button></>}
+      <select aria-label="Filter assessments by status" value={statusFilter} onChange={event => setStatusFilter(event.target.value)}><option value="">All statuses</option><option value="draft">Draft</option><option value="in_progress">In progress</option><option value="submitted">Awaiting review</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select>
+    </div>
+    {error && <div className="vendor-error" role="alert">{error}</div>}
+    <div className="assessment-layout">
+      <div className="assessment-list">
+        {loading ? <p className="assessment-empty">Loading assessments…</p> : items.length === 0 ? <p className="assessment-empty">No assessments yet. Start one from a vendor profile.</p> : items.map(item => {
+          const vendorName = typeof item.vendorId === "object" ? item.vendorId.name : "Vendor";
+          return <button type="button" key={item._id} className={`assessment-list-item ${selected?._id === item._id ? "selected" : ""}`} onClick={() => void openAssessment(item._id)}>
+            <span><strong>{vendorName}</strong><small>{item.title}</small></span><span className={`assessment-status ${item.status}`}>{item.status.replace("_", " ")}</span>
+            {item.riskScore !== null && <small className="assessment-list-score">Risk {item.riskScore}/100 · {item.riskBand}</small>}
+          </button>;
+        })}
+      </div>
+      <div className="assessment-detail">
+        {!selected ? <div className="assessment-empty detail-empty"><ClipboardCheck size={24}/><strong>Select an assessment</strong><span>Questionnaire responses, evidence references and risk breakdown appear here.</span></div> : <>
+          <div className="assessment-detail-heading"><div><span className={`assessment-status ${selected.status}`}>{selected.status.replace("_", " ")}</span><h3>{selected.title}</h3><p>{selected.templateSnapshot.title} · Template version {selected.templateSnapshot.version}</p></div><button type="button" className="vendor-icon-button" onClick={() => setSelected(null)} aria-label="Close assessment"><X size={16}/></button></div>
+          {selected.riskScore !== null && <div className="assessment-score"><strong>{selected.riskScore}<small>/100</small></strong><span><b>{selected.riskBand?.toUpperCase()} RISK</b><small>Scoring model {selected.scoreModelVersion}</small></span></div>}
+          {selected.categoryBreakdown?.length ? <div className="category-breakdown">{selected.categoryBreakdown.map(item => <div key={item.category}><span>{item.category}</span><strong>{item.score}/100</strong><div><i style={{ width: `${item.score}%` }}/></div></div>)}</div> : null}
+          <div className="question-list">{selected.templateSnapshot.questions.map((question,index) => {
+            const draft = answers[question.id] ?? blankAnswer;
+            const locked = !canWrite || !["draft","in_progress"].includes(selected.status);
+            return <article className="assessment-question" key={question.id}>
+              <div className="question-meta"><span>{question.category}</span><small>Weight {question.weight}{question.required ? " · Required" : ""}</small></div>
+              <strong>{index+1}. {question.prompt}</strong>
+              <select disabled={locked} value={draft.answer} onChange={event => updateAnswer(question.id,{answer:event.target.value as AnswerDraft["answer"]})}><option value="yes">Yes — implemented</option><option value="partial">Partially implemented</option><option value="no">No — not implemented</option><option value="not_applicable">Not applicable</option></select>
+              <textarea disabled={locked} rows={2} value={draft.comment} onChange={event => updateAnswer(question.id,{comment:event.target.value})} placeholder="Add context or remediation notes…"/>
+              {!locked && <div className="evidence-reference"><input value={draft.storageKey} onChange={event => updateAnswer(question.id,{storageKey:event.target.value})} placeholder="Private object storage key (optional)"/><input value={draft.fileName} onChange={event => updateAnswer(question.id,{fileName:event.target.value})} placeholder="Evidence filename"/><input value={draft.sha256} onChange={event => updateAnswer(question.id,{sha256:event.target.value})} placeholder="SHA-256 checksum (64 hex characters)"/></div>}
+            </article>;
+          })}</div>
+          {selected.reviewerComment && <p className="reviewer-comment"><strong>Reviewer note:</strong> {selected.reviewerComment}</p>}
+          {canWrite && ["draft","in_progress"].includes(selected.status) && <div className="assessment-actions"><button className="subtle-button" disabled={busy} onClick={() => void saveResponses(false)}>Save responses</button><button className="primary-button" disabled={busy} onClick={() => void saveResponses(true)}>Submit for review <ArrowUpRight size={14}/></button></div>}
+          {canReview && selected.status === "submitted" && <div className="assessment-actions"><button className="subtle-button" disabled={busy} onClick={() => void review("rejected")}>Request changes / Reject</button><button className="primary-button" disabled={busy} onClick={() => void review("approved")}>Approve assessment <CheckCircle2 size={14}/></button></div>}
+          <p className="assessment-disclaimer">Decision support only. This questionnaire score is not a certification, audit opinion, or regulatory compliance determination.</p>
+        </>}
+      </div>
+    </div>
+  </section>;
+}
+
 function Dashboard({ user, organization, organizations, accessToken, onLogout, onOrganizationChange }: { user: UserProfile; organization: OrganizationProfile; organizations: OrganizationProfile[]; accessToken: string; onLogout: () => void; onOrganizationChange: (organization: OrganizationProfile) => void }) {
   const [apiState, setApiState] = useState<HealthState>("checking");
   const [tenantState, setTenantState] = useState<"checking" | "verified" | "denied">("checking");
@@ -369,6 +563,7 @@ function Dashboard({ user, organization, organizations, accessToken, onLogout, o
         </article>
       </section>
       <VendorDirectory accessToken={accessToken} organizationId={organization.id} canWrite={["owner", "admin", "analyst"].includes(organization.role)}/>
+      <AssessmentWorkspace accessToken={accessToken} organizationId={organization.id} canWrite={["owner", "admin", "analyst"].includes(organization.role)} canReview={["owner", "admin"].includes(organization.role)}/>
       <footer className="footer"><span>© 2026 TrustSphere · Portfolio demo</span><span><i className={apiState === "online" ? "pulse-dot" : "pulse-dot offline"}/> API {apiState === "checking" ? "checking" : apiState} · Tenant {tenantState} · Sample data only</span></footer>
     </main>
   </div>;
