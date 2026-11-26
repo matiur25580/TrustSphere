@@ -21,6 +21,21 @@ type OrganizationProfile = { id: string; name: string; slug: string; role: strin
 type AuthSession = { accessToken: string; user: UserProfile; organizations: OrganizationProfile[] };
 type AuthMode = "login" | "register";
 
+let refreshRequest: Promise<string | null> | null = null;
+function refreshAccessToken(): Promise<string | null> {
+  if (!refreshRequest) {
+    refreshRequest = fetch("/api/v1/auth/refresh", { method: "POST", credentials: "include" })
+      .then(async response => {
+        if (!response.ok) return null;
+        const payload = await response.json() as { data?: { accessToken: string } };
+        return payload.data?.accessToken ?? null;
+      })
+      .catch(() => null)
+      .finally(() => { refreshRequest = null; });
+  }
+  return refreshRequest;
+}
+
 function AuthScreen({ onAuthenticated }: { onAuthenticated: (session: AuthSession) => void }) {
   const [mode, setMode] = useState<AuthMode>("login");
   const [name, setName] = useState("");
@@ -83,15 +98,13 @@ function App() {
     const controller = new AbortController();
     async function restoreSession() {
       try {
-        const refresh = await fetch("/api/v1/auth/refresh", { method: "POST", credentials: "include", signal: controller.signal });
-        if (!refresh.ok) return;
-        const refreshPayload = await refresh.json() as { data?: { accessToken: string } };
-        if (!refreshPayload.data?.accessToken) return;
-        const me = await fetch("/api/v1/auth/me", { headers: { Authorization: `Bearer ${refreshPayload.data.accessToken}` }, signal: controller.signal });
+        const accessToken = await refreshAccessToken();
+        if (!accessToken) return;
+        const me = await fetch("/api/v1/auth/me", { headers: { Authorization: `Bearer ${accessToken}` }, signal: controller.signal });
         if (!me.ok) return;
         const mePayload = await me.json() as { data: { user: UserProfile; organizations: OrganizationProfile[] } };
         if (!mePayload.data.organizations.length) return;
-        const restored = { accessToken: refreshPayload.data.accessToken, user: mePayload.data.user, organizations: mePayload.data.organizations };
+        const restored = { accessToken, user: mePayload.data.user, organizations: mePayload.data.organizations };
         setSession(restored);
         setActiveOrganization(restored.organizations[0]);
       } catch (error) {
@@ -108,16 +121,13 @@ function App() {
     if (!session) return;
     const interval = window.setInterval(async () => {
       try {
-        const response = await fetch("/api/v1/auth/refresh", { method: "POST", credentials: "include" });
-        if (!response.ok) {
+        const nextAccessToken = await refreshAccessToken();
+        if (!nextAccessToken) {
           setSession(null);
           setActiveOrganization(null);
           return;
         }
-        const payload = await response.json() as { data?: { accessToken: string } };
-        if (payload.data?.accessToken) {
-          setSession(current => current ? { ...current, accessToken: payload.data!.accessToken } : null);
-        }
+        setSession(current => current ? { ...current, accessToken: nextAccessToken } : null);
       } catch {
         // A transient network failure does not immediately destroy the current in-memory session.
       }
