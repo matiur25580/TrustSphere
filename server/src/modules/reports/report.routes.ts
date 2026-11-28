@@ -12,7 +12,7 @@ reportRouter.use(authenticate, requireTenant, requirePermission("reports:read"))
 
 const CONTROL_CATALOG_SIZE = 10;
 const ranges = { "7d": 7, "30d": 30, "90d": 90 } as const;
-type ReportRange = keyof typeof ranges;
+export type ReportRange = keyof typeof ranges;
 type TrendRow = { _id: string; count: number };
 
 function selectedRange(value: unknown): ReportRange {
@@ -33,7 +33,7 @@ function mergeTrendRows(vendors: TrendRow[], assessments: TrendRow[], findings: 
   return [...days.values()];
 }
 
-async function buildReport(organizationId: string, range: ReportRange) {
+export async function buildReport(organizationId: string, range: ReportRange) {
   const organization = new Types.ObjectId(organizationId);
   const generatedAt = new Date();
   const startDate = new Date(generatedAt.getTime() - ranges[range] * 24 * 60 * 60 * 1000);
@@ -146,13 +146,22 @@ reportRouter.get("/export.csv", async (req, res, next) => {
   try {
     const range = selectedRange(req.query.range);
     const report = await buildReport(req.tenant!.organizationId, range);
-    const rows: unknown[][] = [["Section", "Metric", "Value"]];
-    for (const [key, value] of Object.entries(report.summary)) rows.push(["Summary", key, value]);
-    for (const [section, values] of Object.entries(report.distributions)) for (const item of values) rows.push([section, item.label, item.count]);
-    for (const item of report.trend) rows.push(["Daily trend", item.date, `vendors=${item.vendors}; assessments=${item.assessments}; findings=${item.findings}`]);
-    const csv = rows.map(row => row.map(csvCell).join(",")).join("\r\n");
+    const csv = buildReportCsv(report);
     res.setHeader("Content-Type", "text/csv; charset=utf-8");
     res.setHeader("Content-Disposition", `attachment; filename="trustsphere-risk-report-${range}.csv"`);
-    res.send("\uFEFF" + csv);
+    res.send(csv);
   } catch (error) { next(error); }
 });
+
+
+export function buildReportCsv(report: Awaited<ReturnType<typeof buildReport>>): string {
+  const rows: unknown[][] = [["Section", "Metric", "Value"]];
+  for (const [key, value] of Object.entries(report.summary)) rows.push(["Summary", key, value]);
+  for (const [section, values] of Object.entries(report.distributions)) {
+    for (const item of values) rows.push([section, item.label, item.count]);
+  }
+  for (const item of report.trend) {
+    rows.push(["Daily trend", item.date, `vendors=${item.vendors}; assessments=${item.assessments}; findings=${item.findings}`]);
+  }
+  return "\uFEFF" + rows.map(row => row.map(csvCell).join(",")).join("\r\n");
+}
