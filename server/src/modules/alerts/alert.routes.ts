@@ -91,7 +91,7 @@ alertRouter.get("/", requirePermission("security:read"), async (req, res, next) 
     if (typeof req.query.severity === "string" && ["p1", "p2", "p3", "p4"].includes(req.query.severity)) filter.severity = req.query.severity;
     if (typeof req.query.source === "string" && ["siem", "edr", "cloud", "email_gateway", "manual", "other"].includes(req.query.source)) filter.source = req.query.source;
     const [items, total] = await Promise.all([
-      SecurityAlert.find(filter).sort({ lastReceivedAt: -1 }).skip((page - 1) * limit).limit(limit).populate("incidentId", "title severity status responseDueAt containmentDueAt resolutionDueAt").lean(),
+      SecurityAlert.find(filter).sort({ lastReceivedAt: -1 }).skip((page - 1) * limit).limit(limit).populate("incidentId", "title severity status responseDueAt containmentDueAt resolutionDueAt firstRespondedAt responseBreachedAt containmentBreachedAt resolutionBreachedAt").lean(),
       SecurityAlert.countDocuments(filter),
     ]);
     res.json({ data: items, meta: { page, limit, total, totalPages: Math.ceil(total / limit) } });
