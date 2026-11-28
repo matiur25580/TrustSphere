@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { isValidObjectId, Types } from "mongoose";
+import { isValidObjectId, Types, type Model } from "mongoose";
 import { z } from "zod";
 import { authenticate, requirePermission, requireTenant } from "../identity/identity.middleware.js";
 import { AssessmentEvent } from "../assessments/assessment.models.js";
@@ -27,16 +27,16 @@ const querySchema = z.object({
 
 type SourceDefinition = {
   type: typeof resourceTypes[number];
-  model: typeof AssessmentEvent;
+  model: Model<any>;
   resourceField: string;
 };
 
 const sources: SourceDefinition[] = [
   { type: "assessment", model: AssessmentEvent, resourceField: "assessmentId" },
-  { type: "finding", model: FindingEvent as typeof AssessmentEvent, resourceField: "findingId" },
-  { type: "incident", model: IncidentEvent as typeof AssessmentEvent, resourceField: "incidentId" },
-  { type: "control", model: ControlEvent as typeof AssessmentEvent, resourceField: "controlId" },
-  { type: "evidence", model: EvidenceEvent as typeof AssessmentEvent, resourceField: "evidenceId" },
+  { type: "finding", model: FindingEvent, resourceField: "findingId" },
+  { type: "incident", model: IncidentEvent, resourceField: "incidentId" },
+  { type: "control", model: ControlEvent, resourceField: "controlId" },
+  { type: "evidence", model: EvidenceEvent, resourceField: "evidenceId" },
 ];
 
 auditRouter.get("/events", requirePermission("reports:read"), async (req, res, next) => {
