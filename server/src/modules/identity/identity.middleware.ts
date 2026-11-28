@@ -54,7 +54,7 @@ export async function requireTenant(req: Request, res: Response, next: NextFunct
 
 const rolePermissions: Record<string, string[]> = {
   owner: ["*"],
-  admin: ["users:read", "users:manage", "vendors:read", "vendors:write", "risk:read", "risk:write", "compliance:read", "compliance:write", "reports:read", "security:read", "security:write"],
+  admin: ["users:read", "users:manage", "vendors:read", "vendors:write", "risk:read", "risk:write", "compliance:read", "compliance:write", "reports:read", "reports:manage", "security:read", "security:write"],
   analyst: ["vendors:read", "vendors:write", "risk:read", "risk:write", "compliance:read", "compliance:write", "reports:read", "security:read", "security:write"],
   viewer: ["vendors:read", "risk:read", "compliance:read", "reports:read", "security:read"],
 };
