@@ -83,7 +83,7 @@ export function AuditWorkspace({ accessToken, organizationId }: { accessToken: s
       {items.map(item => <article className="audit-event" key={`${item.resourceType}-${item.id}`}>
         <span className={`audit-event-icon ${item.resourceType}`}><Activity size={16}/></span>
         <div className="audit-event-content">
-          <div className="audit-event-title"><strong>{item.action.replaceAll("_", " ")}</strong><span>{resourceLabels[item.resourceType]}</span></div>
+          <div className="audit-event-title"><strong>{item.action.replace(/_/g, " ")}</strong><span>{resourceLabels[item.resourceType]}</span></div>
           <p>{item.actor.name || "Unknown user"} <small>{item.actor.email ? `· ${item.actor.email}` : ""}</small></p>
           <time dateTime={item.occurredAt}>{new Date(item.occurredAt).toLocaleString()}</time>
         </div>
