@@ -12,7 +12,7 @@ const scheduleSchema = z.object({
   frequency: z.enum(["manual", "weekly", "monthly"]).default("manual"),
   dayOfWeek: z.number().int().min(0).max(6).nullable().default(null),
   dayOfMonth: z.number().int().min(1).max(28).nullable().default(null),
-  localTime: z.string().regex(/^(?:[01]\\d|2[0-3]):[0-5]\\d$/).default("09:00"),
+  localTime: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/).default("09:00"),
   timeZone: z.string().trim().min(1).max(80).default("UTC").refine(value => {
     try { new Intl.DateTimeFormat("en-US", { timeZone: value }); return true; } catch { return false; }
   }, "A valid IANA time zone is required."),
