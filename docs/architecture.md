@@ -22,7 +22,7 @@ Express API (/api/v1)
         |
         +---- MongoDB (tenant-scoped documents)
         +---- Object storage (future: private evidence files)
-        +---- Redis / BullMQ (future: asynchronous jobs)
+        +---- Redis / BullMQ (future: scheduled report and notification jobs)
         +---- AI provider adapter (future: human-reviewed suggestions)
 ```
 
@@ -70,6 +70,6 @@ Evidence records contain metadata and an opaque storage key only. Binary storage
 
 Store file metadata and access-control metadata in MongoDB. Store binary objects in private object storage. Validate size, MIME type, file signature, and authorization; add malware scanning before production use.
 
-## Production hardening still required
+## Saved report scheduling boundary\n\nSaved report definitions store tenant-owned report parameters, recipient addresses, output format, frequency, local time and IANA time zone. A definition is configuration only: no report is sent and no schedule is executed until a durable worker/queue, email provider, delivery idempotency, retry/dead-letter handling and delivery audit records are implemented and configured.\n\n## Production hardening still required
 
 This foundation is not a production security certification. Before real deployment, add refresh-token/session lifecycle hardening, CSRF strategy if cookie auth is used, structured audit retention, backups, observability, secret rotation, rate-limit policy, dependency scanning, security testing, and operational runbooks.
