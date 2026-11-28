@@ -51,7 +51,7 @@ async function appendCustodyEvent(input: {
   location: string; notes: string; evidenceSha256: string;
 }) {
   for (let attempt = 0; attempt < 4; attempt += 1) {
-    const previous = await IncidentCustodyEvent.findOne({ organizationId: input.organizationId, incidentId: input.incidentId }).sort({ sequence: -1 }).lean();
+    const previous = await IncidentCustodyEvent.findOne({ organizationId: input.organizationId, incidentId: input.incidentId }).sort({ sequence: -1 }).lean() as unknown as { sequence: number; eventHash: string } | null;
     const sequence = (previous?.sequence ?? 0) + 1;
     const previousHash = previous?.eventHash ?? ZERO_HASH;
     const occurredAt = new Date();
@@ -92,12 +92,13 @@ securityOperationsRouter.post("/incidents/:incidentId/chain-of-custody", require
     if (!isValidObjectId(req.params.incidentId)) { res.status(404).json({ error: { code: "INCIDENT_NOT_FOUND" } }); return; }
     const input = custodySchema.parse(req.body);
     const organizationId = req.tenant!.organizationId;
-    const incident = await Incident.findOne({ _id: req.params.incidentId, organizationId }).select("_id").lean();
+    const incidentId = String(req.params.incidentId);
+    const incident = await Incident.findOne({ _id: incidentId, organizationId }).select("_id").lean() as unknown as { _id: Types.ObjectId } | null;
     if (!incident) { res.status(404).json({ error: { code: "INCIDENT_NOT_FOUND" } }); return; }
-    const evidence = await ComplianceEvidence.findOne({ _id: input.evidenceId, organizationId }).select("_id sha256 status").lean();
+    const evidence = await ComplianceEvidence.findOne({ _id: input.evidenceId, organizationId }).select("_id sha256 status").lean() as unknown as { _id: Types.ObjectId; sha256: string; status: string } | null;
     if (!evidence) { res.status(404).json({ error: { code: "EVIDENCE_NOT_FOUND", message: "Evidence must exist in this organization before it can be added to the custody ledger." } }); return; }
     const event = await appendCustodyEvent({
-      organizationId, incidentId: req.params.incidentId, evidenceId: input.evidenceId, actorId: req.auth!.userId,
+      organizationId, incidentId, evidenceId: input.evidenceId, actorId: req.auth!.userId,
       action: input.action, fromCustodian: input.fromCustodian ?? "", toCustodian: input.toCustodian ?? "",
       location: input.location ?? "", notes: input.notes ?? "", evidenceSha256: evidence.sha256,
     });
@@ -111,8 +112,8 @@ securityOperationsRouter.get("/incidents/:incidentId/chain-of-custody", requireP
     const organizationId = req.tenant!.organizationId;
     const incident = await Incident.findOne({ _id: req.params.incidentId, organizationId }).select("_id").lean();
     if (!incident) { res.status(404).json({ error: { code: "INCIDENT_NOT_FOUND" } }); return; }
-    const events = await IncidentCustodyEvent.find({ organizationId, incidentId: req.params.incidentId }).sort({ sequence: 1 }).populate("actorId", "name email").lean();
-    const raw = await IncidentCustodyEvent.find({ organizationId, incidentId: req.params.incidentId }).sort({ sequence: 1 }).lean();
+    const events = await IncidentCustodyEvent.find({ organizationId, incidentId }).sort({ sequence: 1 }).populate("actorId", "name email").lean();
+    const raw = await IncidentCustodyEvent.find({ organizationId, incidentId }).sort({ sequence: 1 }).lean() as unknown as Array<Record<string, any>>;
     res.json({ data: events, integrity: { valid: verifyCustodyChain(raw as unknown as Array<Record<string, any>>), eventCount: raw.length, latestHash: raw.at(-1)?.eventHash ?? ZERO_HASH } });
   } catch (error) { next(error); }
 });
@@ -149,10 +150,12 @@ securityOperationsRouter.post("/playbooks/:id/start", requirePermission("securit
   try {
     if (!isValidObjectId(req.params.id) || !isValidObjectId(req.body?.incidentId)) { res.status(400).json({ error: { code: "INVALID_REFERENCE", message: "A valid playbook and incident identifier are required." } }); return; }
     const organizationId = req.tenant!.organizationId;
-    const [playbook, incident] = await Promise.all([
-      ResponsePlaybook.findOne({ _id: req.params.id, organizationId, active: true }).lean(),
-      Incident.findOne({ _id: req.body.incidentId, organizationId }).lean(),
+    const [playbookResult, incidentResult] = await Promise.all([
+      ResponsePlaybook.findOne({ _id: String(req.params.id), organizationId, active: true }).lean(),
+      Incident.findOne({ _id: String(req.body.incidentId), organizationId }).lean(),
     ]);
+    const playbook = playbookResult as unknown as { _id: Types.ObjectId; name: string; category: string; severity: string; steps: Array<{ stepId: string; title: string; instruction: string; actionType: string; required: boolean }> } | null;
+    const incident = incidentResult as unknown as { _id: Types.ObjectId; category: string; severity: string; status: string } | null;
     if (!playbook || !incident) { res.status(404).json({ error: { code: "PLAYBOOK_OR_INCIDENT_NOT_FOUND" } }); return; }
     if (playbook.category !== incident.category || (playbook.severity !== "any" && playbook.severity !== incident.severity)) {
       res.status(409).json({ error: { code: "PLAYBOOK_NOT_APPLICABLE", message: "The playbook category or severity does not match this incident." } }); return;
@@ -173,17 +176,18 @@ securityOperationsRouter.patch("/playbook-runs/:runId/steps/:stepId", requirePer
     const input = stepUpdateSchema.parse(req.body);
     const run = await ResponsePlaybookRun.findOne({ _id: req.params.runId, organizationId: req.tenant!.organizationId });
     if (!run || run.status !== "in_progress") { res.status(404).json({ error: { code: "PLAYBOOK_RUN_NOT_FOUND" } }); return; }
-    const index = run.steps.findIndex(step => step.stepId === req.params.stepId);
+    const steps = run.steps as unknown as Array<{ stepId: string; required: boolean; status: string; notes: string; completedBy: Types.ObjectId | null; completedAt: Date | null }>;
+    const index = steps.findIndex((step: { stepId: string }) => step.stepId === String(req.params.stepId));
     if (index < 0) { res.status(404).json({ error: { code: "PLAYBOOK_STEP_NOT_FOUND" } }); return; }
-    if (input.status === "in_progress" && run.steps.slice(0, index).some(step => step.required && !["completed", "skipped"].includes(step.status))) {
+    if (input.status === "in_progress" && steps.slice(0, index).some((step: { required: boolean; status: string }) => step.required && !["completed", "skipped"].includes(step.status))) {
       res.status(409).json({ error: { code: "PLAYBOOK_STEP_ORDER", message: "Complete or explicitly skip earlier required steps first." } }); return;
     }
-    const step = run.steps[index];
+    const step = steps[index];
     step.status = input.status;
     step.notes = input.notes ?? step.notes;
     if (input.status === "completed" || input.status === "skipped") { step.completedBy = new Types.ObjectId(req.auth!.userId); step.completedAt = new Date(); }
     else { step.completedBy = null; step.completedAt = null; }
-    const finished = run.steps.every(item => !item.required || ["completed", "skipped"].includes(item.status));
+    const finished = steps.every((item: { required: boolean; status: string }) => !item.required || ["completed", "skipped"].includes(item.status));
     if (finished) { run.status = "completed"; run.completedAt = new Date(); }
     await run.save();
     await appendPlaybookEvent({ organizationId: req.tenant!.organizationId, incidentId: String(run.incidentId), runId: String(run._id), actorId: req.auth!.userId, action: finished ? "completed" : "step_updated", details: { stepId: step.stepId, status: step.status, notes: step.notes } });
