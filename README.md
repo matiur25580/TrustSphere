@@ -24,7 +24,7 @@ TrustSphere is a multi-tenant SaaS platform concept for managing third-party ven
 | Validation | Zod |
 | Security baseline | Helmet, CORS allow-list, rate limiting |
 | Testing | Node.js test runner via tsx, scoring unit tests, MongoDB-backed API integration tests |
-| Realtime / jobs | Socket.IO, Redis, BullMQ (later phases) |
+| Background jobs | Redis, BullMQ, Nodemailer, PDFKit |
 | AI | Provider adapter (Gemini integration planned) |
 
 ## Repository layout
@@ -56,7 +56,7 @@ npm install
 
 ### Environment
 
-Create `server/.env` from `server/.env.example` and ensure MongoDB is running. Never commit real secrets.
+Copy the root `.env.example` to `server/.env`, then configure MongoDB. The separate report worker also needs a reachable Redis instance and SMTP credentials before scheduled email delivery is activated. Never commit real secrets.
 
 ### Run locally
 
@@ -182,6 +182,14 @@ All reporting endpoints require an authenticated active tenant and the `reports:
 The reporting workspace includes vendor risk bands, assessment risk bands, finding severity and lifecycle, compliance implementation coverage, evidence lifecycle, overdue remediation, assessments awaiting review and evidence awaiting review. The selected date range filters vendor, assessment and finding creation activity; compliance and evidence status are current snapshots. The print-optimized report can be saved as PDF using the browser print dialog.
 
 Risk scores and starter framework mappings are decision-support indicators, not certifications, audit opinions or regulatory determinations. The dashboard and report endpoints are tenant-scoped; all analytics are aggregated using the active organization identifier resolved by membership middleware. See [reporting module notes](server/src/modules/reports/README.md) for metric definitions and date-window semantics.
+
+### Scheduled Saved Report Delivery
+
+Saved report definitions support manual, weekly and monthly schedules in an IANA time zone. Recurring definitions require at least one validated recipient. The API exposes tenant-scoped delivery history at `GET /api/v1/reports/saved/:id/deliveries`.
+
+Run the delivery process separately from the API with `npm run worker:reports` from the repository root. The worker reconciles active MongoDB definitions into BullMQ repeatable schedulers in Redis, generates CSV or PDF attachments, and sends them through the configured SMTP relay. Failed jobs use five attempts with exponential backoff; delivery records retain status, recipients, attempt count, provider message ID and failure reason. A stable delivery key and message ID reduce duplicate processing, but SMTP delivery remains at-least-once: no external mail provider can guarantee exactly-once delivery after an ambiguous network failure.
+
+Configure `REDIS_URL`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_FROM` and optional `SMTP_USER` / `SMTP_PASSWORD` in the worker environment. The API can run without these optional settings, but scheduled jobs will not execute until a worker with valid Redis and SMTP configuration is running. Do not put credentials in source control.
 
 ### Run assessment and findings scoring tests
 

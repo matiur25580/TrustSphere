@@ -69,8 +69,8 @@ Status is intentionally conservative: unchecked implementation items have not ye
 - [x] Daily activity trends and operational attention queues
 - [x] CSV export and print-optimized PDF workflow (browser print dialog)
 - [x] Tenant-scoped saved report definition API and validation (CI passed; prerequisite PR #3 merged)
-- [ ] Saved report management UI for listing, creating, editing and archiving definitions (implementation complete; CI verification pending)
-- [ ] Scheduled report execution, email delivery, retry policy and delivery history (requires a durable worker, configured email provider, idempotency and delivery audit trail)
+- [x] Saved report management UI for listing, creating, editing and archiving definitions (typecheck, build and API test workflow passed in PR #4)
+- [ ] Scheduled report execution, email delivery, retry policy and delivery history (worker and UI implemented; CI verification and Redis/SMTP runtime configuration pending)
 
 ## Milestone 9 — Incident management & security operations
 - [x] Tenant-scoped incident reporting, classification and severity

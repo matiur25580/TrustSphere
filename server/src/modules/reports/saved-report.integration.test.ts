@@ -14,6 +14,7 @@ const { createApp } = await import("../../app.js");
 const { createAccessToken } = await import("../identity/identity.security.js");
 const { User, Organization, Membership } = await import("../identity/identity.models.js");
 const { SavedReport } = await import("./saved-report.models.js");
+const { SavedReportDelivery } = await import("./saved-report-delivery.models.js");
 
 const database = await MongoMemoryServer.create();
 const app = createApp();
@@ -50,7 +51,7 @@ before(async () => {
   analystToken = createAccessToken(String(analyst._id));
   viewerToken = createAccessToken(String(viewer._id));
   outsiderToken = createAccessToken(String(outsider._id));
-  await Promise.all([User, Organization, Membership, SavedReport].map(model => model.init()));
+  await Promise.all([User, Organization, Membership, SavedReport, SavedReportDelivery].map(model => model.init()));
 });
 
 after(async () => {
@@ -94,6 +95,33 @@ test("saved report definitions enforce tenant scope, permissions and schedule va
     schedule: { frequency: "weekly", dayOfWeek: null, dayOfMonth: null, localTime: "09:00", timeZone: "Not/AZone" },
   });
   assert.equal(invalidSchedule.status, 400);
+
+  const missingRecipients = await api(ownerToken).post("/api/v1/reports/saved").send({
+    name: "No recipient schedule",
+    schedule: { frequency: "weekly", dayOfWeek: 1, dayOfMonth: null, localTime: "09:00", timeZone: "Asia/Kolkata" },
+  });
+  assert.equal(missingRecipients.status, 400);
+  assert.equal(missingRecipients.body.error.code, "SCHEDULE_RECIPIENTS_REQUIRED");
+
+  await SavedReportDelivery.create({
+    organizationId,
+    savedReportId: savedId,
+    savedReportName: "Monthly vendor risk pack",
+    idempotencyKey: "test-org:test-report:delivery-1",
+    status: "sent",
+    format: "csv",
+    range: "90d",
+    recipients: ["risk@example.test"],
+    attempts: 1,
+    scheduledFor: new Date(),
+    completedAt: new Date(),
+  });
+  const history = await api(viewerToken).get(`/api/v1/reports/saved/${savedId}/deliveries`);
+  assert.equal(history.status, 200);
+  assert.equal(history.body.data.length, 1);
+  assert.equal(history.body.data[0].status, "sent");
+  const crossTenantHistory = await api(outsiderToken, otherOrganizationId).get(`/api/v1/reports/saved/${savedId}/deliveries`);
+  assert.equal(crossTenantHistory.status, 404);
 
   const outsiderRead = await api(outsiderToken, otherOrganizationId).get("/api/v1/reports/saved");
   assert.equal(outsiderRead.status, 200);
