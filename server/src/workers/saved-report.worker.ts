@@ -1,6 +1,5 @@
 import { createHash } from "node:crypto";
 import { Queue, Worker, type Job } from "bullmq";
-import IORedis from "ioredis";
 import nodemailer from "nodemailer";
 import PDFDocument from "pdfkit";
 import { connectDatabase, disconnectDatabase } from "../config/database.js";
@@ -23,7 +22,19 @@ function requiredWorkerConfig() {
   }
 }
 
-const redisConnection = () => new IORedis(env.REDIS_URL!, { maxRetriesPerRequest: null });
+function redisConnection() {
+  const url = new URL(env.REDIS_URL!);
+  const database = url.pathname.length > 1 ? Number(url.pathname.slice(1)) : 0;
+  return {
+    host: url.hostname,
+    port: Number(url.port || 6379),
+    ...(url.username ? { username: decodeURIComponent(url.username) } : {}),
+    ...(url.password ? { password: decodeURIComponent(url.password) } : {}),
+    db: Number.isInteger(database) && database >= 0 ? database : 0,
+    ...(url.protocol === "rediss:" ? { tls: {} } : {}),
+    maxRetriesPerRequest: null,
+  };
+}
 const createMailer = () => nodemailer.createTransport({
   host: env.SMTP_HOST,
   port: env.SMTP_PORT,
@@ -151,14 +162,12 @@ async function start() {
   requiredWorkerConfig();
   await connectDatabase();
 
-  const queueConnection = redisConnection();
-  const workerConnection = redisConnection();
-  const queue = new Queue<DeliveryJob>(QUEUE_NAME, { connection: queueConnection });
+  const queue = new Queue<DeliveryJob>(QUEUE_NAME, { connection: redisConnection() });
   const transporter = createMailer();
   const worker = new Worker<DeliveryJob>(
     QUEUE_NAME,
     job => deliverSavedReport(job, transporter),
-    { connection: workerConnection, concurrency: 5 },
+    { connection: redisConnection(), concurrency: 5 },
   );
 
   worker.on("failed", (job, error) => console.error("Saved report delivery attempt failed", { jobId: job?.id, error: error.message }));
@@ -216,7 +225,6 @@ async function start() {
     clearInterval(syncTimer);
     await worker.close();
     await queue.close();
-    await Promise.all([queueConnection.quit(), workerConnection.quit()]);
     await disconnectDatabase();
     process.exit(0);
   };
