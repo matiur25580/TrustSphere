@@ -8,9 +8,10 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "tsx --test src/modules/identity/identity.security.test.ts src/modules/assessments/assessment.scoring.test.ts src/modules/findings/finding.scoring.test.ts src/modules/findings/finding.integration.test.ts src/modules/incidents/incident-sla.test.ts src/modules/alerts/alert.integration.test.ts src/modules/reports/saved-report.integration.test.ts src/modules/reports/saved-report-schedule.test.ts src/modules/escalations/escalation.test.ts",
+    "test": "tsx --test src/modules/identity/identity.security.test.ts src/modules/assessments/assessment.scoring.test.ts src/modules/findings/finding.scoring.test.ts src/modules/findings/finding.integration.test.ts src/modules/incidents/incident-sla.test.ts src/modules/alerts/alert.integration.test.ts src/modules/reports/saved-report.integration.test.ts src/modules/reports/saved-report-schedule.test.ts src/modules/escalations/escalation.test.ts src/modules/escalations/escalation.execution.test.ts",
     "worker:reports": "tsx src/workers/saved-report.worker.ts",
-    "worker:sla": "tsx src/workers/sla-monitor.worker.ts"
+    "worker:sla": "tsx src/workers/sla-monitor.worker.ts",
+    "worker:escalations": "tsx src/workers/escalation.worker.ts"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

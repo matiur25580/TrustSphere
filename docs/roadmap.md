@@ -83,3 +83,11 @@ Status is intentionally conservative: unchecked implementation items have not ye
 - [x] Tenant-scoped alert ingestion, duplicate suppression and initial severity-based SLA deadlines\n- [x] Automated response/containment/resolution SLA breach detection with idempotent tenant-scoped breach records\n- [x] In-app SLA breach notifications for assigned responders and organization owners/admins\n- [x] Recipient-scoped notification inbox and read-state APIs\n- [x] Tenant-scoped configurable on-call rotations and ordered severity-specific escalation policy CRUD APIs (CI verification pending)\n- [ ] Timed multi-tier escalation execution, outbound email/push notifications and escalation audit trail
 - [ ] Forensic evidence chain-of-custody and automated response playbooks
 
+
+
+### Incident escalation execution
+- [x] Deterministic due-tier evaluation and on-call rotation selection helpers.
+- [x] Tenant-scoped, idempotent escalation execution records and append-only execution audit events.
+- [x] Separate in-app/email delivery records with retryable failure state.
+- [x] Dedicated escalation worker entry point (`npm run worker:escalations` in `server/`).
+- [ ] Deploy and operate the worker with production MongoDB and SMTP configuration; validate real delivery.
