@@ -48,7 +48,7 @@ async function issueSession(req: Request, res: Response, userId: string) {
   return createAccessToken(userId);
 }
 
-identityRouter.post("/register", async (req, res, next) => {
+identityRouter.post("/register", requireTrustedOrigin, async (req, res, next) => {
   let createdUserId: unknown;
   let createdOrganizationId: unknown;
   try {
@@ -85,7 +85,7 @@ identityRouter.post("/register", async (req, res, next) => {
   }
 });
 
-identityRouter.post("/login", async (req, res, next) => {
+identityRouter.post("/login", requireTrustedOrigin, async (req, res, next) => {
   try {
     const input = loginSchema.parse(req.body);
     const user = await User.findOne({ email: input.email.toLowerCase() }).select("+passwordHash");
