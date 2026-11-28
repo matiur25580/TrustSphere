@@ -35,7 +35,7 @@ alertRouter.post("/", requirePermission("security:write"), async (req, res, next
       });
     } catch (error) {
       if ((error as { code?: number }).code !== 11000) throw error;
-      const existing = await SecurityAlert.findOneAndUpdate(
+      const existing: any = await SecurityAlert.findOneAndUpdate(
         { organizationId, source: input.source, sourceEventId: input.sourceEventId },
         { $inc: { occurrenceCount: 1 }, $set: { lastReceivedAt: now } },
         { new: true },
