@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { Queue, Worker, type Job } from "bullmq";
-import { Redis } from "ioredis";
+import IORedis from "ioredis";
 import nodemailer from "nodemailer";
 import PDFDocument from "pdfkit";
 import { connectDatabase, disconnectDatabase } from "../config/database.js";
@@ -23,7 +23,7 @@ function requiredWorkerConfig() {
   }
 }
 
-const redisConnection = () => new Redis(env.REDIS_URL!, { maxRetriesPerRequest: null });
+const redisConnection = () => new IORedis(env.REDIS_URL!, { maxRetriesPerRequest: null });
 const createMailer = () => nodemailer.createTransport({
   host: env.SMTP_HOST,
   port: env.SMTP_PORT,
@@ -169,7 +169,14 @@ async function start() {
     if (syncing) return;
     syncing = true;
     try {
-      const definitions = await SavedReport.find({}).select("_id organizationId schedule enabled recipients archivedAt").lean();
+      const definitions = await SavedReport.find({}).select("_id organizationId schedule enabled recipients archivedAt").lean() as unknown as Array<{
+        _id: unknown;
+        organizationId: unknown;
+        schedule: { frequency: "manual" | "weekly" | "monthly"; dayOfWeek: number | null; dayOfMonth: number | null; localTime: string; timeZone: string };
+        enabled: boolean;
+        recipients: string[];
+        archivedAt: Date | null;
+      }>;
       for (const definition of definitions) {
         const schedulerId = `saved-report:${String(definition._id)}`;
         const active = definition.enabled && !definition.archivedAt && definition.recipients.length > 0;
