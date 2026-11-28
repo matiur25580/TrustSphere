@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { Queue, Worker, type Job } from "bullmq";
-import IORedis from "ioredis";
+import { Redis } from "ioredis";
 import nodemailer from "nodemailer";
 import PDFDocument from "pdfkit";
 import { connectDatabase, disconnectDatabase } from "../config/database.js";
@@ -23,7 +23,7 @@ function requiredWorkerConfig() {
   }
 }
 
-const redisConnection = () => new IORedis(env.REDIS_URL!, { maxRetriesPerRequest: null });
+const redisConnection = () => new Redis(env.REDIS_URL!, { maxRetriesPerRequest: null });
 const createMailer = () => nodemailer.createTransport({
   host: env.SMTP_HOST,
   port: env.SMTP_PORT,
@@ -73,7 +73,14 @@ async function deliverSavedReport(job: Job<DeliveryJob>, transporter: ReturnType
   const { organizationId, savedReportId } = job.data;
   const reportDefinition = await SavedReport.findOne({
     _id: savedReportId, organizationId, archivedAt: null, enabled: true,
-  }).lean();
+  }).lean() as unknown as {
+    _id: string;
+    name: string;
+    range: "7d" | "30d" | "90d";
+    format: "csv" | "pdf";
+    recipients: string[];
+    schedule: { frequency: "manual" | "weekly" | "monthly"; dayOfWeek: number | null; dayOfMonth: number | null; localTime: string; timeZone: string };
+  } | null;
 
   if (!reportDefinition || reportDefinition.schedule.frequency === "manual" || reportDefinition.recipients.length === 0) {
     return { skipped: true, reason: "Saved report is no longer scheduled or has no recipients." };
