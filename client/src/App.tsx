@@ -3,6 +3,7 @@ import { FindingsWorkspace } from "./FindingsWorkspace";
 import { IncidentsWorkspace } from "./IncidentsWorkspace";
 import { ComplianceWorkspace } from "./ComplianceWorkspace";
 import { ReportsWorkspace } from "./ReportsWorkspace";
+import { AuditWorkspace } from "./AuditWorkspace";
 import { AlertTriangle, Activity, ArrowUpRight, Bell, Building2, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ClipboardCheck, Eye, EyeOff, FileCheck2, LayoutDashboard, LockKeyhole, LogOut, Mail, Pencil, Plus, Search, Shield, ShieldCheck, Trash2, Users, Workflow, X } from "lucide-react";
 
 
@@ -564,6 +565,7 @@ function Dashboard({ user, organization, organizations, accessToken, onLogout, o
       <FindingsWorkspace accessToken={accessToken} organizationId={organization.id} canWrite={["owner", "admin", "analyst"].includes(organization.role)} canReview={["owner", "admin"].includes(organization.role)}/>
       <IncidentsWorkspace accessToken={accessToken} organizationId={organization.id} canWrite={["owner", "admin", "analyst"].includes(organization.role)} canReview={["owner", "admin"].includes(organization.role)}/>
       <ComplianceWorkspace accessToken={accessToken} organizationId={organization.id} canWrite={["owner", "admin", "analyst"].includes(organization.role)} canReview={["owner", "admin"].includes(organization.role)}/>
+      <AuditWorkspace accessToken={accessToken} organizationId={organization.id}/>
       <footer className="footer"><span>© 2026 TrustSphere · Portfolio demo</span><span><i className={apiState === "online" ? "pulse-dot" : "pulse-dot offline"}/> API {apiState === "checking" ? "checking" : apiState} · Tenant {tenantState} · Live organization reports</span></footer>
     </main>
   </div>;

@@ -342,3 +342,40 @@ test("incident API enforces tenant scope, RBAC, lifecycle transitions and event 
   assert.equal(await Incident.countDocuments({ organizationId }), 1);
   assert.ok(await IncidentEvent.countDocuments({ organizationId, incidentId: id }) >= 7);
 });
+
+
+test("unified audit explorer filters events and never crosses tenant boundaries", async () => {
+  const allEvents = await api(viewerToken).get("/api/v1/audit/events?limit=50");
+  assert.equal(allEvents.status, 200);
+  assert.ok(allEvents.body.data.length >= 5);
+  assert.ok(allEvents.body.data.every((item: { resourceType: string; actor: { id: string }; occurredAt: string }) =>
+    ["assessment", "finding", "incident", "control", "evidence"].includes(item.resourceType) && item.actor.id && item.occurredAt
+  ));
+
+  const findingsOnly = await api(viewerToken).get("/api/v1/audit/events?resourceType=finding");
+  assert.equal(findingsOnly.status, 200);
+  assert.ok(findingsOnly.body.data.length >= 1);
+  assert.ok(findingsOnly.body.data.every((item: { resourceType: string }) => item.resourceType === "finding"));
+
+  const actionFilter = await api(viewerToken).get("/api/v1/audit/events?action=implementation_updated");
+  assert.equal(actionFilter.status, 200);
+  assert.ok(actionFilter.body.data.length >= 1);
+  assert.ok(actionFilter.body.data.every((item: { action: string }) => item.action === "implementation_updated"));
+
+  const paginated = await api(viewerToken).get("/api/v1/audit/events?page=1&limit=2");
+  assert.equal(paginated.status, 200);
+  assert.equal(paginated.body.data.length, 2);
+  assert.equal(paginated.body.meta.limit, 2);
+  assert.ok(paginated.body.meta.total >= 5);
+
+  const invalidRange = await api(viewerToken).get("/api/v1/audit/events?from=2026-12-01T00:00:00.000Z&to=2026-11-01T00:00:00.000Z");
+  assert.equal(invalidRange.status, 400);
+
+  const outsider = await api(outsiderToken, otherOrganizationId).get("/api/v1/audit/events?limit=50");
+  assert.equal(outsider.status, 200);
+  assert.deepEqual(outsider.body.data, []);
+  assert.equal(outsider.body.meta.total, 0);
+
+  const unauthenticated = await request(app).get("/api/v1/audit/events");
+  assert.equal(unauthenticated.status, 401);
+});

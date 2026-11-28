@@ -44,7 +44,7 @@ Status is intentionally conservative: unchecked implementation items have not ye
 - [x] Tenant-scoped incident management and response lifecycle (MongoDB-backed API integration tests passing in CI; browser E2E pending)
 - [ ] Background jobs and reminders
 - [ ] Real-time notifications
-- [ ] Audit event search
+- [x] Tenant-scoped unified audit event search across assessment, finding, incident, control and evidence activity (tamper-evident ledger and external retention remain future hardening)
 
 ## Milestone 6 — AI assistance
 - [ ] Provider abstraction and prompt/version management

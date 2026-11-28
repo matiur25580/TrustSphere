@@ -187,6 +187,17 @@ Risk scores and starter framework mappings are decision-support indicators, not 
 
 From the repository root, run `npm run test --workspace server`. The suite includes pure scoring unit tests and MongoDB-backed API integration coverage. The latest GitHub Actions run completed successfully with workspace typechecking, production builds, scoring tests and MongoDB-backed API integration tests.
 
+### Unified Audit Activity API
+
+The tenant-scoped audit explorer consolidates the existing append-only application events from assessments, findings, incidents, compliance controls and evidence into one searchable timeline.
+
+- `GET /api/v1/audit/events?page=1&limit=20` — merged newest-first event feed (maximum page size 50).
+- Optional filters: `resourceType=assessment|finding|incident|control|evidence`, exact `action`, `actorId`, and ISO-8601 `from` / `to` timestamps.
+- Requires authentication, active tenant membership and `reports:read`; every source query is scoped by the organization resolved by membership middleware.
+- The React dashboard includes resource, action and date filters with pagination.
+
+This explorer aggregates existing module event collections; it does not yet provide a cryptographically tamper-evident audit ledger, transactional outbox, immutable external retention or audit export. Those remain separate production-hardening requirements.
+
 ## Engineering principles
 
 1. **Tenant isolation is enforced server-side.** Client-side filtering is never a security boundary.
