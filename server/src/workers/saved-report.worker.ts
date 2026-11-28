@@ -126,7 +126,7 @@ async function deliverSavedReport(job: Job<DeliveryJob>, transporter: ReturnType
         `Your scheduled TrustSphere report "${reportDefinition.name}" is attached.`,
         `Reporting period: ${report.meta.startDate.toISOString().slice(0, 10)} to ${report.meta.endDate.toISOString().slice(0, 10)}.`,
         "This is an automated message. Replies are not monitored.",
-      ].join("\\n"),
+      ].join("\n"),
       messageId: `<${messageKey}@trustsphere.local>`,
       headers: { "X-TrustSphere-Delivery-Key": messageKey },
       attachments: [{
