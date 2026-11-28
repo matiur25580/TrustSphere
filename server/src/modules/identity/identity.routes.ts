@@ -17,7 +17,9 @@ const loginSchema = z.object({ email: z.string().trim().email(), password: z.str
 
 function readCookie(req: Request, name: string) {
   const pair = req.headers.cookie?.split(";").map((item) => item.trim()).find((item) => item.startsWith(name + "="));
-  return pair ? decodeURIComponent(pair.slice(name.length + 1)) : undefined;
+  if (!pair) return undefined;
+  try { return decodeURIComponent(pair.slice(name.length + 1)); }
+  catch { return undefined; }
 }
 function setRefreshCookie(res: Response, token: string) {
   const secure = env.NODE_ENV === "production" ? "; Secure" : "";
@@ -48,7 +50,7 @@ async function issueSession(req: Request, res: Response, userId: string) {
   return createAccessToken(userId);
 }
 
-identityRouter.post("/register", async (req, res, next) => {
+identityRouter.post("/register", requireTrustedOrigin, async (req, res, next) => {
   let createdUserId: unknown;
   let createdOrganizationId: unknown;
   try {
@@ -85,7 +87,7 @@ identityRouter.post("/register", async (req, res, next) => {
   }
 });
 
-identityRouter.post("/login", async (req, res, next) => {
+identityRouter.post("/login", requireTrustedOrigin, async (req, res, next) => {
   try {
     const input = loginSchema.parse(req.body);
     const user = await User.findOne({ email: input.email.toLowerCase() }).select("+passwordHash");

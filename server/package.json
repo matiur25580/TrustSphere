@@ -8,7 +8,7 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "tsx --test src/modules/assessments/assessment.scoring.test.ts src/modules/findings/finding.scoring.test.ts src/modules/findings/finding.integration.test.ts"
+    "test": "tsx --test src/modules/identity/identity.security.test.ts src/modules/assessments/assessment.scoring.test.ts src/modules/findings/finding.scoring.test.ts src/modules/findings/finding.integration.test.ts"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
