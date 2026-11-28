@@ -80,6 +80,6 @@ Status is intentionally conservative: unchecked implementation items have not ye
 - [x] Owner/admin closure and reopening controls
 - [x] Investigation notes and activity timeline (API append-only; tamper resistance pending)
 - [x] Incident summary, filters and paginated queue
-- [x] Tenant-scoped alert ingestion, duplicate suppression and initial severity-based SLA deadlines (automated breach detection and escalation remain pending)
+- [x] Tenant-scoped alert ingestion, duplicate suppression and initial severity-based SLA deadlines\n- [x] Automated response/containment/resolution SLA breach detection with idempotent tenant-scoped breach records\n- [x] In-app SLA breach notifications for assigned responders and organization owners/admins\n- [x] Recipient-scoped notification inbox and read-state APIs\n- [ ] Configurable on-call rotations, timed multi-tier escalation and outbound email/push notifications
 - [ ] Forensic evidence chain-of-custody and automated response playbooks
 

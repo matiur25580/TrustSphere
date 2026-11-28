@@ -48,3 +48,16 @@ The authenticated tenant-scoped alert API is mounted at `/api/v1/alerts`:
 Each alert is deduplicated by organization, source and source event ID. Repeated delivery increments its occurrence count and refreshes the last-received timestamp rather than creating another incident. A newly ingested alert creates a linked incident and an activity event. Alert input is strictly validated; callers cannot supply organization IDs or incident IDs.
 
 New incidents receive fixed initial SLA targets from their severity, measured from report/ingestion time: P1 response/containment/resolution 15m/1h/4h; P2 1h/4h/24h; P3 4h/24h/72h; P4 8h/48h/120h. The first-response timestamp is set when investigation begins. These are starter defaults, not tenant-configurable contractual commitments. Automated breach detection, escalation/on-call routing and outbound notifications are not included in this slice.
+
+
+## Automated SLA monitoring and escalation
+
+Run the independent database polling worker with `npm run worker:sla --workspace server` (or `npm run worker:sla` from the repository root). It scans active incidents every 60 seconds and records overdue response, containment and resolution milestones. A unique organization + incident + milestone index makes each breach record idempotent across worker restarts and concurrent scans.
+
+For each breach, an in-app notification is created for the assigned responder (when present) and active organization owners/admins. The latter is the initial escalation tier; there is no configurable on-call rota in this release. Notifications are tenant- and recipient-scoped:
+
+- `GET /api/v1/notifications?page=1&limit=20` — current user's notification inbox and unread count; requires `security:read`.
+- `PATCH /api/v1/notifications/:id/read` — mark one owned notification read.
+- `POST /api/v1/notifications/read-all` — mark all current user's tenant notifications read.
+
+The worker uses MongoDB only and does not require Redis or SMTP. It is a separate long-running process and must be deployed as a worker service with the same MongoDB environment configuration as the API. Notifications are persisted in-app; email, push, real-time delivery, configurable on-call schedules, timed multi-tier escalation, and external SIEM/EDR webhook authentication remain future work. A breach notification is not proof that a human responder has acknowledged or acted on the incident.

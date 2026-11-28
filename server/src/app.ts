@@ -17,6 +17,7 @@ import { savedReportRouter } from "./modules/reports/saved-report.routes.js";
 import { incidentRouter } from "./modules/incidents/incident.routes.js";
 import { alertRouter } from "./modules/alerts/alert.routes.js";
 import { auditRouter } from "./modules/audit/audit.routes.js";
+import { notificationRouter } from "./modules/notifications/notification.routes.js";
 
 export function createApp() {
   const app = express();
@@ -60,6 +61,7 @@ export function createApp() {
   app.use("/api/v1/incidents", incidentRouter);
   app.use("/api/v1/alerts", alertRouter);
   app.use("/api/v1/audit", auditRouter);
+  app.use("/api/v1/notifications", notificationRouter);
   app.use(notFoundHandler);
   app.use(errorHandler);
 
