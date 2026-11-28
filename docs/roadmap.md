@@ -80,8 +80,8 @@ Status is intentionally conservative: unchecked implementation items have not ye
 - [x] Owner/admin closure and reopening controls
 - [x] Investigation notes and activity timeline (API append-only; tamper resistance pending)
 - [x] Incident summary, filters and paginated queue
-- [x] Tenant-scoped alert ingestion, duplicate suppression and initial severity-based SLA deadlines\n- [x] Automated response/containment/resolution SLA breach detection with idempotent tenant-scoped breach records\n- [x] In-app SLA breach notifications for assigned responders and organization owners/admins\n- [x] Recipient-scoped notification inbox and read-state APIs\n- [x] Tenant-scoped configurable on-call rotations and ordered severity-specific escalation policy CRUD APIs (CI verification pending)\n- [ ] Timed multi-tier escalation execution, outbound email/push notifications and escalation audit trail
-- [ ] Forensic evidence chain-of-custody and automated response playbooks
+- [x] Tenant-scoped alert ingestion, duplicate suppression and initial severity-based SLA deadlines\n- [x] Automated response/containment/resolution SLA breach detection with idempotent tenant-scoped breach records\n- [x] In-app SLA breach notifications for assigned responders and organization owners/admins\n- [x] Recipient-scoped notification inbox and read-state APIs\n- [x] Tenant-scoped configurable on-call rotations and ordered severity-specific escalation policy CRUD APIs (CI verification pending)\n- [x] Timed multi-tier escalation execution, in-app/email delivery records and append-only escalation audit events (worker deployment and live SMTP delivery pending)
+- [x] Tenant-scoped forensic evidence chain-of-custody ledger with SHA-256 hash-chain verification and human-operated response playbooks (external immutable retention and automated infrastructure actions remain future work)
 
 
 
