@@ -16,7 +16,9 @@ const incidentSchema = new Schema({
   containmentDueAt: { type: Date, default: null },
   resolutionDueAt: { type: Date, default: null },
   firstRespondedAt: { type: Date, default: null },
-  slaBreachedAt: { type: Date, default: null },
+  responseBreachedAt: { type: Date, default: null },
+  containmentBreachedAt: { type: Date, default: null },
+  resolutionBreachedAt: { type: Date, default: null },
   detectedAt: { type: Date, default: null },
   containedAt: { type: Date, default: null },
   resolvedAt: { type: Date, default: null },
@@ -32,6 +34,7 @@ const incidentSchema = new Schema({
 
 incidentSchema.index({ organizationId: 1, status: 1, severity: 1, updatedAt: -1 });
 incidentSchema.index({ organizationId: 1, reportedAt: -1 });
+incidentSchema.index({ organizationId: 1, status: 1, responseDueAt: 1 });
 
 const incidentEventSchema = new Schema({
   organizationId: { type: Schema.Types.ObjectId, ref: "Organization", required: true, immutable: true, index: true },
