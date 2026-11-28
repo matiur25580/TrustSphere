@@ -13,7 +13,7 @@ const savedReportSchema = new Schema({
     frequency: { type: String, enum: ["manual", "weekly", "monthly"], required: true, default: "manual" },
     dayOfWeek: { type: Number, min: 0, max: 6, default: null },
     dayOfMonth: { type: Number, min: 1, max: 28, default: null },
-    localTime: { type: String, match: /^(?:[01]\\d|2[0-3]):[0-5]\\d$/, default: "09:00" },
+    localTime: { type: String, match: /^(?:[01]\d|2[0-3]):[0-5]\d$/, default: "09:00" },
     timeZone: { type: String, required: true, default: "UTC", maxlength: 80 },
   },
   enabled: { type: Boolean, default: true, required: true },
@@ -21,6 +21,7 @@ const savedReportSchema = new Schema({
 }, { timestamps: true });
 
 savedReportSchema.index({ organizationId: 1, archivedAt: 1, updatedAt: -1 });
+savedReportSchema.index({ "schedule.frequency": 1, enabled: 1, archivedAt: 1 });
 savedReportSchema.index({ organizationId: 1, name: 1 }, { unique: true, partialFilterExpression: { archivedAt: null } });
 
 export type SavedReportDocument = InferSchemaType<typeof savedReportSchema> & mongoose.Document;

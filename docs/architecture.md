@@ -22,7 +22,7 @@ Express API (/api/v1)
         |
         +---- MongoDB (tenant-scoped documents)
         +---- Object storage (future: private evidence files)
-        +---- Redis / BullMQ (future: scheduled report and notification jobs)
+        +---- Redis / BullMQ (scheduled report delivery and future notification jobs)
         +---- AI provider adapter (future: human-reviewed suggestions)
 ```
 
@@ -70,6 +70,12 @@ Evidence records contain metadata and an opaque storage key only. Binary storage
 
 Store file metadata and access-control metadata in MongoDB. Store binary objects in private object storage. Validate size, MIME type, file signature, and authorization; add malware scanning before production use.
 
-## Saved report scheduling boundary\n\nSaved report definitions store tenant-owned report parameters, recipient addresses, output format, frequency, local time and IANA time zone. A definition is configuration only: no report is sent and no schedule is executed until a durable worker/queue, email provider, delivery idempotency, retry/dead-letter handling and delivery audit records are implemented and configured.\n\n## Production hardening still required
+## Saved report scheduling and delivery
+
+Saved report definitions are tenant-owned and store report parameters, recipients, output format and a manual/weekly/monthly schedule with an IANA time zone. The API validates recurring schedule fields and exposes tenant-scoped delivery history. A separate BullMQ worker reconciles active definitions into Redis job schedulers, generates CSV/PDF attachments from the same tenant-scoped report query, and sends through an SMTP adapter. Failed jobs retry up to five times with exponential backoff. Delivery history uses a unique idempotency key and records attempts, status, recipients, provider message ID and failure reason.
+
+The worker is a separate process: `npm run worker:reports`. It requires Redis and SMTP configuration; the API remains usable when these optional worker settings are absent. SMTP is at-least-once delivery, not an exactly-once guarantee. Provider credentials, Redis availability, monitoring, dead-letter review and operational alerting must be configured before production use.
+
+## Production hardening still required
 
 This foundation is not a production security certification. Before real deployment, add refresh-token/session lifecycle hardening, CSRF strategy if cookie auth is used, structured audit retention, backups, observability, secret rotation, rate-limit policy, dependency scanning, security testing, and operational runbooks.
