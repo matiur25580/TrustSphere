@@ -61,3 +61,13 @@ For each breach, an in-app notification is created for the assigned responder (w
 - `POST /api/v1/notifications/read-all` — mark all current user's tenant notifications read.
 
 The worker uses MongoDB only and does not require Redis or SMTP. It is a separate long-running process and must be deployed as a worker service with the same MongoDB environment configuration as the API. Notifications are persisted in-app; email, push, real-time delivery, configurable on-call schedules, timed multi-tier escalation, and external SIEM/EDR webhook authentication remain future work. A breach notification is not proof that a human responder has acknowledged or acted on the incident.
+
+
+## On-call rotations and escalation policies
+
+Routes are mounted at `/api/v1/escalations` and require an authenticated user with active organization membership. Reads require `security:read`; mutations require `security:write`.
+
+- `GET/POST /rotations`, `PATCH/DELETE /rotations/:id`: manage tenant-scoped responder rotations, IANA timezone, round-robin/fixed-primary mode, interval, start time and ordered active organization members. Active policies prevent deletion of a referenced rotation.
+- `GET/POST /policies`, `PATCH/DELETE /policies/:id`: manage severity-specific ordered escalation tiers. Tier zero must start immediately; subsequent offsets must be strictly increasing. On-call tiers must reference an active rotation in the same organization.
+
+This milestone slice stores and validates schedules and policies. It does not yet execute timed escalation, calculate the live on-call member, or send email/push messages. The existing SLA worker remains the only running escalation behavior (assigned responder and organization administrators via in-app notifications); policy execution and append-only escalation audit events are follow-up work.

@@ -1,0 +1,5 @@
+import assert from "node:assert/strict"; import test from "node:test"; import {z} from "zod";
+const schema=z.object({tiers:z.array(z.object({afterMinutes:z.number().int().min(0),target:z.enum(["on_call","incident_assignee","organization_admins"])})).min(1)}).superRefine((v,c)=>{const t=v.tiers.map(x=>x.afterMinutes);if(t[0]!==0)c.addIssue({code:"custom",message:"first tier"});if(t.some((x,i)=>i>0&&x<=t[i-1]))c.addIssue({code:"custom",message:"order"})});
+test("accepts immediate ordered escalation tiers",()=>assert.equal(schema.safeParse({tiers:[{afterMinutes:0,target:"incident_assignee"},{afterMinutes:10,target:"on_call"},{afterMinutes:30,target:"organization_admins"}]}).success,true));
+test("rejects delayed first tier",()=>assert.equal(schema.safeParse({tiers:[{afterMinutes:5,target:"organization_admins"}]}).success,false));
+test("rejects non-increasing tiers",()=>assert.equal(schema.safeParse({tiers:[{afterMinutes:0,target:"incident_assignee"},{afterMinutes:10,target:"on_call"},{afterMinutes:10,target:"organization_admins"}]}).success,false));
