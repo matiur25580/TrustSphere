@@ -17,7 +17,9 @@ const loginSchema = z.object({ email: z.string().trim().email(), password: z.str
 
 function readCookie(req: Request, name: string) {
   const pair = req.headers.cookie?.split(";").map((item) => item.trim()).find((item) => item.startsWith(name + "="));
-  if (!pair) return undefined;\n  try { return decodeURIComponent(pair.slice(name.length + 1)); }\n  catch { return undefined; }
+  if (!pair) return undefined;
+  try { return decodeURIComponent(pair.slice(name.length + 1)); }
+  catch { return undefined; }
 }
 function setRefreshCookie(res: Response, token: string) {
   const secure = env.NODE_ENV === "production" ? "; Secure" : "";
