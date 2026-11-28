@@ -42,11 +42,11 @@ function invalidId(res: import("express").Response) {
 savedReportRouter.get("/:id/deliveries", requirePermission("reports:read"), async (req, res, next) => {
   try {
     if (!isValidObjectId(req.params.id)) { invalidId(res); return; }
-    const report = await SavedReport.findOne({ _id: req.params.id, organizationId: req.tenant!.organizationId }).select("_id").lean();
-    if (!report) { invalidId(res); return; }
+    const reportExists = await SavedReport.exists({ _id: req.params.id, organizationId: req.tenant!.organizationId });
+    if (!reportExists) { invalidId(res); return; }
     const page = Math.max(1, Number.parseInt(String(req.query.page ?? "1"), 10) || 1);
     const limit = Math.min(50, Math.max(1, Number.parseInt(String(req.query.limit ?? "20"), 10) || 20));
-    const filter = { organizationId: req.tenant!.organizationId, savedReportId: report._id };
+    const filter = { organizationId: req.tenant!.organizationId, savedReportId: req.params.id };
     const [items, total] = await Promise.all([
       SavedReportDelivery.find(filter).sort({ createdAt: -1, _id: -1 }).skip((page - 1) * limit).limit(limit).lean(),
       SavedReportDelivery.countDocuments(filter),
