@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Activity, AlertTriangle, BarChart3, CalendarDays, CheckCircle2, Clock3, Download, FileText, RefreshCw, ShieldCheck, Users } from "lucide-react";
 import "./ReportsWorkspace.css";
+import { SavedReportsPanel } from "./SavedReportsPanel";
 
 type Range = "7d" | "30d" | "90d";
 type Distribution = { label: string; count: number };
@@ -117,5 +118,6 @@ export function ReportsWorkspace({ accessToken, organizationId }: { accessToken:
       </div>
       <p className="report-disclaimer">Risk scores and control mappings are internal decision-support indicators, not certifications, audit opinions or regulatory determinations. Date-range filters apply to newly created vendors, assessments and findings; compliance and evidence cards show current organization status.</p>
     </> : <div className="report-loading">No analytics available.</div>}
+    <SavedReportsPanel accessToken={accessToken} organizationId={organizationId}/>
   </section>;
 }
