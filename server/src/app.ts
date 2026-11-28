@@ -15,6 +15,7 @@ import { evidenceRouter } from "./modules/compliance/evidence.routes.js";
 import { reportRouter } from "./modules/reports/report.routes.js";
 import { savedReportRouter } from "./modules/reports/saved-report.routes.js";
 import { incidentRouter } from "./modules/incidents/incident.routes.js";
+import { alertRouter } from "./modules/alerts/alert.routes.js";
 import { auditRouter } from "./modules/audit/audit.routes.js";
 
 export function createApp() {
@@ -57,6 +58,7 @@ export function createApp() {
   app.use("/api/v1/reports", reportRouter);
   app.use("/api/v1/reports/saved", savedReportRouter);
   app.use("/api/v1/incidents", incidentRouter);
+  app.use("/api/v1/alerts", alertRouter);
   app.use("/api/v1/audit", auditRouter);
   app.use(notFoundHandler);
   app.use(errorHandler);

@@ -6,6 +6,7 @@ import { Membership } from "../identity/identity.models.js";
 import { Vendor } from "../vendors/vendor.models.js";
 import { Finding } from "../findings/finding.models.js";
 import { Incident, IncidentEvent } from "./incident.models.js";
+import { calculateIncidentSla } from "./incident-sla.js";
 
 export const incidentRouter = Router();
 incidentRouter.use(authenticate, requireTenant);
@@ -120,6 +121,7 @@ incidentRouter.post("/", requirePermission("security:write"), async (req, res, n
       organizationId: req.tenant!.organizationId, title: input.title, summary: input.summary, category: input.category,
       severity: input.severity, source: input.source, vendorId: links.vendorId || null, findingId: links.findingId || null,
       assignedTo: links.assignedTo || null, detectedAt: input.detectedAt ? new Date(input.detectedAt) : null,
+      ...calculateIncidentSla(input.severity),
       impact: input.impact ?? "", createdBy: req.auth!.userId, updatedBy: req.auth!.userId,
     });
     await appendEvent({ organizationId: req.tenant!.organizationId, incidentId: String(incident._id), actorId: req.auth!.userId, action: "created", details: { severity: incident.severity, category: incident.category } });
@@ -184,7 +186,7 @@ incidentRouter.post("/:id/transition", requirePermission("security:write"), asyn
         incident.status = "triaged"; eventAction = "triaged"; break;
       case "investigate":
         if (!["reported", "triaged"].includes(incident.status)) { res.status(409).json({ error: { code: "INVALID_INCIDENT_TRANSITION", message: "Only reported or triaged incidents can enter investigation." } }); return; }
-        incident.status = "investigating"; incident.detectedAt ??= new Date(); eventAction = "investigation_started"; break;
+        incident.status = "investigating"; incident.detectedAt ??= new Date(); incident.firstRespondedAt ??= new Date(); eventAction = "investigation_started"; break;
       case "contain":
         if (!["investigating", "triaged"].includes(incident.status) || !incident.containmentPlan) { res.status(409).json({ error: { code: "CONTAINMENT_PLAN_REQUIRED", message: "Add a containment plan before marking the incident contained." } }); return; }
         incident.status = "contained"; incident.containedAt = new Date(); eventAction = "contained"; break;

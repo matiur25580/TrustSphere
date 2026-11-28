@@ -80,6 +80,6 @@ Status is intentionally conservative: unchecked implementation items have not ye
 - [x] Owner/admin closure and reopening controls
 - [x] Investigation notes and activity timeline (API append-only; tamper resistance pending)
 - [x] Incident summary, filters and paginated queue
-- [ ] Alert ingestion, SLA timers, on-call routing and notification delivery
+- [x] Tenant-scoped alert ingestion, duplicate suppression and initial severity-based SLA deadlines (automated breach detection and escalation remain pending)
 - [ ] Forensic evidence chain-of-custody and automated response playbooks
 
