@@ -110,7 +110,8 @@ securityOperationsRouter.get("/incidents/:incidentId/chain-of-custody", requireP
   try {
     if (!isValidObjectId(req.params.incidentId)) { res.status(404).json({ error: { code: "INCIDENT_NOT_FOUND" } }); return; }
     const organizationId = req.tenant!.organizationId;
-    const incident = await Incident.findOne({ _id: req.params.incidentId, organizationId }).select("_id").lean();
+    const incidentId = String(req.params.incidentId);
+    const incident = await Incident.findOne({ _id: incidentId, organizationId }).select("_id").lean() as unknown as { _id: Types.ObjectId } | null;
     if (!incident) { res.status(404).json({ error: { code: "INCIDENT_NOT_FOUND" } }); return; }
     const events = await IncidentCustodyEvent.find({ organizationId, incidentId }).sort({ sequence: 1 }).populate("actorId", "name email").lean();
     const raw = await IncidentCustodyEvent.find({ organizationId, incidentId }).sort({ sequence: 1 }).lean() as unknown as Array<Record<string, any>>;
