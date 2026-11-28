@@ -21,7 +21,6 @@ const savedReportSchema = new Schema({
 }, { timestamps: true });
 
 savedReportSchema.index({ organizationId: 1, archivedAt: 1, updatedAt: -1 });
-savedReportSchema.index({ "schedule.frequency": 1, enabled: 1, archivedAt: 1 });
 savedReportSchema.index({ organizationId: 1, name: 1 }, { unique: true, partialFilterExpression: { archivedAt: null } });
 
 export type SavedReportDocument = InferSchemaType<typeof savedReportSchema> & mongoose.Document;

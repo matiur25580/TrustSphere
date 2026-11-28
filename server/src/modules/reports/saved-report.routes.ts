@@ -3,7 +3,6 @@ import { isValidObjectId } from "mongoose";
 import { z } from "zod";
 import { authenticate, requirePermission, requireTenant } from "../identity/identity.middleware.js";
 import { SavedReport } from "./saved-report.models.js";
-import { SavedReportDelivery } from "./saved-report-delivery.models.js";
 
 export const savedReportRouter = Router();
 savedReportRouter.use(authenticate, requireTenant);
@@ -35,26 +34,6 @@ const definitionSchema = z.object({
 
 const updateSchema = definitionSchema.partial().refine(value => Object.keys(value).length > 0, "Provide at least one field to update");
 
-function invalidId(res: import("express").Response) {
-  res.status(404).json({ error: { code: "SAVED_REPORT_NOT_FOUND", message: "Saved report not found." } });
-}
-
-savedReportRouter.get("/:id/deliveries", requirePermission("reports:read"), async (req, res, next) => {
-  try {
-    if (!isValidObjectId(req.params.id)) { invalidId(res); return; }
-    const report = await SavedReport.findOne({ _id: req.params.id, organizationId: req.tenant!.organizationId }).select("_id").lean();
-    if (!report) { invalidId(res); return; }
-    const page = Math.max(1, Number.parseInt(String(req.query.page ?? "1"), 10) || 1);
-    const limit = Math.min(50, Math.max(1, Number.parseInt(String(req.query.limit ?? "20"), 10) || 20));
-    const filter = { organizationId: req.tenant!.organizationId, savedReportId: report._id };
-    const [items, total] = await Promise.all([
-      SavedReportDelivery.find(filter).sort({ createdAt: -1, _id: -1 }).skip((page - 1) * limit).limit(limit).lean(),
-      SavedReportDelivery.countDocuments(filter),
-    ]);
-    res.json({ data: items, meta: { page, limit, total, totalPages: Math.ceil(total / limit) } });
-  } catch (error) { next(error); }
-});
-
 savedReportRouter.get("/", requirePermission("reports:read"), async (req, res, next) => {
   try {
     const items = await SavedReport.find({ organizationId: req.tenant!.organizationId, archivedAt: null })
@@ -66,10 +45,6 @@ savedReportRouter.get("/", requirePermission("reports:read"), async (req, res, n
 savedReportRouter.post("/", requirePermission("reports:manage"), async (req, res, next) => {
   try {
     const input = definitionSchema.parse(req.body);
-    if (input.schedule.frequency !== "manual" && input.recipients.length === 0) {
-      res.status(400).json({ error: { code: "SCHEDULE_RECIPIENTS_REQUIRED", message: "Add at least one recipient before enabling scheduled delivery." } });
-      return;
-    }
     const item = await SavedReport.create({
       ...input,
       recipients: [...new Set(input.recipients.map(value => value.toLowerCase()))],
@@ -85,14 +60,6 @@ savedReportRouter.patch("/:id", requirePermission("reports:manage"), async (req,
   try {
     if (!isValidObjectId(req.params.id)) { res.status(404).json({ error: { code: "SAVED_REPORT_NOT_FOUND", message: "Saved report not found." } }); return; }
     const input = updateSchema.parse(req.body);
-    const existing = await SavedReport.findOne({ _id: req.params.id, organizationId: req.tenant!.organizationId, archivedAt: null });
-    if (!existing) { res.status(404).json({ error: { code: "SAVED_REPORT_NOT_FOUND", message: "Saved report not found." } }); return; }
-    const nextFrequency = input.schedule?.frequency ?? existing.schedule.frequency;
-    const nextRecipients = input.recipients ?? existing.recipients;
-    if (nextFrequency !== "manual" && nextRecipients.length === 0) {
-      res.status(400).json({ error: { code: "SCHEDULE_RECIPIENTS_REQUIRED", message: "Add at least one recipient before enabling scheduled delivery." } });
-      return;
-    }
     if (input.recipients) input.recipients = [...new Set(input.recipients.map(value => value.toLowerCase()))];
     const item = await SavedReport.findOneAndUpdate(
       { _id: req.params.id, organizationId: req.tenant!.organizationId, archivedAt: null },
